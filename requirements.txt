@@ -1,0 +1,11 @@
+fastapi>=0.110
+uvicorn>=0.29
+streamlit>=1.35
+requests>=2.31
+pandas>=2.0
+matplotlib>=3.8
+scikit-learn>=1.4
+pytest>=8.0
+httpx>=0.27
+# Optional: the CrewAI orchestration layer (app/crew_flow.py). The core pipeline runs without it.
+# crewai>=0.80

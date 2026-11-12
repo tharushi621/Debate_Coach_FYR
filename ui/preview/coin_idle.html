@@ -1,0 +1,57 @@
+<!doctype html><meta charset='utf-8'>
+<style>
+*{box-sizing:border-box;margin:0}body{background:radial-gradient(ellipse at 50% 0%,#2a2250,#0b0a14 70%);font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden}
+#wrap{position:relative;height:330px;perspective:800px;display:flex;align-items:center;justify-content:center}
+#coin{position:absolute;left:50%;top:50%;width:150px;height:150px;margin:-75px 0 0 -75px;transform-style:preserve-3d;will-change:transform}
+#coin .layer,#coin .face{position:absolute;inset:0;border-radius:50%}
+#coin .layer{background:radial-gradient(circle at 50% 50%,#b8861b,#8a5f0e);border:2px solid #7a5208}
+#coin .face{backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;
+ background:radial-gradient(circle at 32% 28%,#fff4b8,#f2c230 38%,#c18a14 72%,#9a6a0c);border:6px double #8a5f0e;color:#6b4506;font-weight:900;text-shadow:0 1px 0 #ffe9a0;box-shadow:inset 0 0 18px #7a520888}
+#coin .face .big{font-size:46px;line-height:1}#coin .face .sm{font-size:13px;letter-spacing:3px;margin-top:4px}
+#shadow{position:absolute;left:50%;bottom:42px;width:140px;height:26px;margin-left:-70px;border-radius:50%;background:radial-gradient(ellipse,#000d,#0000 70%)}
+#msg{position:absolute;left:0;right:0;bottom:8px;text-align:center;color:#ffe9a8;font-weight:800;font-size:19px;text-shadow:0 2px 8px #000;min-height:28px}
+#msg.win{animation:glow 1.1s ease-in-out infinite alternate}@keyframes glow{to{text-shadow:0 0 18px #ffd66b,0 2px 8px #000;transform:scale(1.04)}}
+.hint{position:absolute;top:10px;left:0;right:0;text-align:center;color:#b9b3d9;font-size:13px}
+</style>
+<div id="wrap"><div class="hint">Press the button below to flip the coin</div><div id="shadow"></div><div id="coin"></div><div id="msg"></div></div>
+<script>
+(function(){
+ var RESULT = null, H = 330, coin = document.getElementById('coin'), shadow = document.getElementById('shadow'), msg = document.getElementById('msg');
+ var html = '';
+ for (var i=-7;i<=7;i++) html += '<div class="layer" style="transform:translateZ('+i+'px)"></div>';
+ html += '<div class="face" style="transform:translateZ(8px)"><div class="big">🗣️</div><div class="sm">HEADS</div></div>';
+ html += '<div class="face" style="transform:rotateX(180deg) translateZ(8px)"><div class="big">⚖️</div><div class="sm">TAILS</div></div>';
+ coin.innerHTML = html;
+ var restY = H/2 - 75;
+ function place(y, rx, ry, rz, s){ coin.style.transform = 'translateY('+y+'px) rotateX('+rx+'deg) rotateY('+ry+'deg) rotateZ('+rz+'deg) scale('+s+')'; }
+ if (!RESULT) {                                  // idle: coin hovers and slowly turns
+   var t0 = performance.now();
+   (function idle(now){ var t=(now-t0)/1000; place(Math.sin(t*2)*6, 12, t*40, 0, 1); shadow.style.opacity = .7 - Math.sin(t*2)*.1; requestAnimationFrame(idle); })(t0);
+   return;
+ }
+ var up = RESULT === 'heads' ? 0 : 180, spins = 5 + Math.floor(Math.random()*3), DUR = 2300, peak = H*0.36, t0 = performance.now();
+ function ease(x){ return 1 - Math.pow(1-x, 2.2); }
+ function frame(now){
+   var p = Math.min((now - t0)/DUR, 1);
+   var air = Math.min(p/0.78, 1);                 // flight phase
+   var y = -peak * 4*air*(1-air);                 // parabola: up and down
+   var rx = (spins*360 + up) * ease(air);         // spin about the horizontal axis, decelerating
+   var wob = Math.sin(air*Math.PI)*14;            // slight off-axis wobble in the air
+   var s = 1 + 0.35*(4*air*(1-air));              // gets closer to the camera at the top
+   if (p > 0.78) {                                // landing: damped bounces
+     var q = (p-0.78)/0.22, b = Math.abs(Math.sin(q*Math.PI*2.5))*Math.pow(1-q,2)*28;
+     y = -b; s = 1; wob = 0; rx = spins*360 + up;
+   }
+   place(y, rx, 0, wob, s);
+   var lift = Math.abs(y)/peak;
+   shadow.style.transform = 'scale('+(1 - lift*0.6)+')'; shadow.style.opacity = 0.75 - lift*0.5;
+   if (p < 1) { requestAnimationFrame(frame); }
+   else {
+     place(0, spins*360 + up, 0, 0, 1);
+     msg.className = 'win';
+     msg.textContent = RESULT === 'heads' ? 'HEADS: you are the PROPONENT' : 'TAILS: you are the OPPONENT';
+   }
+ }
+ place(0, 0, 0, 0, 1); requestAnimationFrame(frame);
+})();
+</script>

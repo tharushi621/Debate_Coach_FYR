@@ -1,0 +1,88 @@
+
+# ==============================
+# Python cache files
+# ==============================
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+
+# ==============================
+# Virtual environments
+# ==============================
+.venv/
+.venv*/
+venv/
+env/
+ENV/
+
+# ==============================
+# Environment variables / secrets
+# ==============================
+.env
+.env.*
+!.env.example
+
+# ==============================
+# Database files
+# ==============================
+*.db
+*.sqlite
+*.sqlite3
+
+# ==============================
+# Logs
+# ==============================
+*.log
+logs/
+
+# ==============================
+# Python testing and coverage
+# ==============================
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ==============================
+# Jupyter Notebook
+# ==============================
+.ipynb_checkpoints/
+
+# ==============================
+# Build files
+# ==============================
+build/
+dist/
+*.egg-info/
+
+# ==============================
+# IDE and editor
+# ==============================
+.idea/
+.vscode/
+*.code-workspace
+
+# ==============================
+# Operating system
+# ==============================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ==============================
+# Generated AI model files
+# ==============================
+*.pt
+*.pth
+*.onnx
+*.safetensors
+*.joblib
+*.h5
+
+# ==============================
+# Generated project outputs
+# ==============================
+outputs/
+checkpoints/
