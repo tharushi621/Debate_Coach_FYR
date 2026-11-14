@@ -1,6 +1,8 @@
 """Smoke test: python -m app.smoke   (uses LLM_BACKEND / LLM_* env vars)
 Sends one argument through the closed loop and prints the outputs in the Appendix C JSON shapes."""
 import json
+import os
+import time
 
 from .db import Database
 from .llm import make_llm
@@ -11,8 +13,13 @@ ARG = "Social media should be banned for children because it is harmful."
 
 
 def main():
+    os.environ.setdefault("LLM_VERBOSE", "1")  # show the time of each model call
     try:
         llm = make_llm()
+        if hasattr(llm, "warm_up"):
+            print(f"Loading {llm.model} (first call can take minutes on a CPU)...", flush=True)
+            print(f"model ready in {llm.warm_up():.0f}s; now running one turn (about 4 model calls)...", flush=True)
+        t0 = time.time()
         db = Database(":memory:")
         sid = db.create_session(db.create_user("smoke"), TOPIC, "proponent")
         r = process_turn(db, llm, sid, ARG)
@@ -20,6 +27,7 @@ def main():
         print(f"SMOKE TEST FAILED: {e}")
         raise SystemExit(1)
     dims = r["scores"]["dimensions"]
+    print(f"turn took {time.time() - t0:.0f}s")
     print("backend:", getattr(llm, "name", "?"), "| model:", getattr(llm, "model", "n/a"))
     print("\n--- Toulmin analysis (Appendix C) ---")
     print(json.dumps({k: r["analysis"].get(k) for k in ("main_claim", "grounds", "warrant", "backing", "qualifier", "rebuttal", "missing_components")}, indent=2))

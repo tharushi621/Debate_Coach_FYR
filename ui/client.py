@@ -11,9 +11,9 @@ class ApiError(Exception):
 
 
 class Client:
-    def __init__(self, base=None, timeout=90):
+    def __init__(self, base=None, timeout=None):
         self.base = (base or os.getenv("API_URL", "http://127.0.0.1:8000")).rstrip("/")
-        self.timeout = timeout
+        self.timeout = timeout if timeout is not None else int(os.getenv("API_TIMEOUT", "900"))  # a CPU-only Llama 3 8B turn takes 3-7 min
 
     def _call(self, method, path, **kw):
         try:

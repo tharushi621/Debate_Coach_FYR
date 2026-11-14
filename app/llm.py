@@ -29,22 +29,58 @@ def extract_json(text: str) -> dict:
 
 
 class OllamaLLM:
+    """Local Llama 3 8B through Ollama's native API (thesis setup: temperature 0, seed 7, JSON mode).
+    Env: OLLAMA_MODEL (default llama3:8b), OLLAMA_URL, OLLAMA_TIMEOUT seconds per call (default 300), OLLAMA_KEEP_ALIVE (default 30m),
+    LLM_VERBOSE=1 prints the time each call takes (so a slow CPU run is visibly working, not hung)."""
     name = "ollama"
 
-    def __init__(self, model="llama3:8b", url="http://localhost:11434", timeout=120):
-        self.model, self.url, self.timeout = model, url, timeout
+    def __init__(self, model="llama3:8b", url=None, timeout=None, keep_alive=None):
+        import os
+        self.model = model
+        self.url = (url or os.getenv("OLLAMA_URL") or "http://localhost:11434").rstrip("/")
+        self.timeout = timeout if timeout is not None else int(os.getenv("OLLAMA_TIMEOUT", "300"))
+        self.keep_alive = keep_alive or os.getenv("OLLAMA_KEEP_ALIVE", "30m")
+        self.verbose = os.getenv("LLM_VERBOSE", "0") == "1"
+
+    def _chat(self, messages, json_mode=True):
+        body = {"model": self.model, "stream": False, "keep_alive": self.keep_alive,
+                "options": {"temperature": 0, "seed": 7}, "messages": messages}
+        if json_mode:
+            body["format"] = "json"
+        try:
+            r = requests.post(f"{self.url}/api/chat", timeout=self.timeout, json=body)
+        except requests.exceptions.ConnectionError:
+            raise RuntimeError(f"Cannot reach Ollama at {self.url}. Start it (the Ollama app, or 'ollama serve') and check 'ollama list'.")
+        except requests.exceptions.Timeout:
+            raise RuntimeError(f"Ollama did not answer within {self.timeout}s. Raise OLLAMA_TIMEOUT, or check speed with 'ollama run {self.model} --verbose'.")
+        if r.status_code == 404:
+            raise RuntimeError(f"Ollama has no model '{self.model}'. Run: ollama pull {self.model}")
+        r.raise_for_status()
+        return r.json()["message"]["content"]
+
+    def warm_up(self):
+        """Load the model into memory once (the first call is the slowest), so later calls are not mistaken for a hang."""
+        import time
+        t = time.time()
+        self._chat([{"role": "user", "content": "Reply with the single word: ready"}], json_mode=False)
+        return time.time() - t
 
     def json(self, task, prompt, payload=None, retries=2):
+        import sys
+        import time
         last = None
         for _ in range(retries + 1):
+            t = time.time()
             try:
-                r = requests.post(f"{self.url}/api/chat", timeout=self.timeout, json={
-                    "model": self.model, "stream": False, "format": "json",
-                    "options": {"temperature": 0, "seed": 7},
-                    "messages": [{"role": "user", "content": prompt}]})
-                r.raise_for_status()
-                return extract_json(r.json()["message"]["content"])
-            except Exception as e:  # retry on bad JSON / transient errors
+                out = extract_json(self._chat([{"role": "user", "content": prompt}]))
+                if self.verbose:
+                    print(f"[llm] {task}: {time.time() - t:.1f}s", file=sys.stderr, flush=True)
+                return out
+            except ValueError as e:  # bad JSON from the model: retry
+                last = e
+            except RuntimeError:  # connection / timeout / missing model: retrying only wastes minutes
+                raise
+            except Exception as e:  # transient HTTP errors
                 last = e
         raise RuntimeError(f"LLM failed for task {task}: {last}")
 
@@ -90,7 +126,7 @@ def make_llm():
     import os
     backend = os.getenv("LLM_BACKEND", "ollama")
     if backend == "ollama":
-        return OllamaLLM(os.getenv("OLLAMA_MODEL", "llama3:8b"))
+        return OllamaLLM(os.getenv("OLLAMA_MODEL", "llama3:8b"))  # timeout, url, keep-alive come from OLLAMA_* env vars
     if backend == "openai":
         return OpenAICompatLLM()
     return HeuristicLLM()
