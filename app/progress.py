@@ -1,9 +1,15 @@
 """Learner progression: levels, XP, streaks, badges, quests, stats, recommendations.
 
-Blinding rule (study integrity): quality-based XP/badges are granted only when the learner is in a
-study arm that shows the full report (`display == "full"`). Participation XP is the same for all arms.
+Blinding rule (study integrity): quality based XP and badges are granted only when the learner is in a
+study arm that shows the full report (display == "full"). Participation XP is the same for all arms.
+
+BUG FIX: WEAKNESS_DIM used to be a hand written copy that mapped irrelevant_evidence to relevance and
+overgeneralisation to logical_validity. It now comes from app/taxonomy.py, the single source of truth,
+so the Skills radar, the recommendations and the training badge agree with the thesis (Table 3.11).
 """
 import datetime as dt
+
+from .taxonomy import WEAKNESS_TO_DIMENSION as WEAKNESS_DIM  # noqa: F401  (re-exported for the UI)
 
 DIMS = ["claim_clarity", "evidence_quality", "warrant_strength", "logical_validity",
         "rebuttal_readiness", "relevance", "qualification"]
@@ -15,32 +21,35 @@ SKILLS = {  # three headline skills shown on the profile
     "Critical thinking": ["logical_validity", "relevance", "qualification"],
     "Rebuttal": ["rebuttal_readiness"],
 }
-WEAKNESS_DIM = {"unclear_claim": "claim_clarity", "insufficient_evidence": "evidence_quality",
-                "irrelevant_evidence": "relevance", "missing_warrant": "warrant_strength",
-                "poor_relevance": "relevance", "weak_rebuttal": "rebuttal_readiness",
-                "logical_fallacy": "logical_validity", "overgeneralisation": "logical_validity",
-                "missing_qualification": "qualification"}
 WEAKNESS_LABEL = {"unclear_claim": "Unclear claim", "insufficient_evidence": "Not enough evidence",
-                  "irrelevant_evidence": "Evidence off-topic", "missing_warrant": "Missing warrant",
+                  "irrelevant_evidence": "Evidence off topic", "missing_warrant": "Missing warrant",
                   "poor_relevance": "Drifting off the point", "weak_rebuttal": "Weak rebuttal",
                   "logical_fallacy": "Logical slip", "overgeneralisation": "Overgeneralising",
                   "missing_qualification": "No qualifier"}
+INTERVENTION_LABEL = {"claim_clarification_question": "Claim clarification question",
+                      "evidence_demanding_challenge": "Evidence demanding challenge",
+                      "relevance_checking_question": "Relevance checking question",
+                      "warrant_challenge_question": "Warrant challenge question",
+                      "topic_refocusing_prompt": "Topic refocusing prompt",
+                      "counterargument_presentation": "Counterargument presentation",
+                      "socratic_reasoning_question": "Socratic reasoning question",
+                      "counterexample_presentation": "Counterexample presentation",
+                      "qualification_challenge": "Qualification challenge",
+                      "single_prompt": "Single prompt baseline", "generic_counter": "Generic counterargument"}
 # weakness -> training family shown in stage 06
 TRAIN_KIND = {"unclear_claim": "clarity", "insufficient_evidence": "evidence", "irrelevant_evidence": "evidence",
               "missing_warrant": "logic", "poor_relevance": "clarity", "weak_rebuttal": "rebuttal",
               "logical_fallacy": "logic", "overgeneralisation": "logic", "missing_qualification": "logic"}
-
 LEVELS = [(0, "Curious Mind"), (150, "Argument Apprentice"), (400, "Claim Crafter"),
           (800, "Evidence Hunter"), (1400, "Rebuttal Ranger"), (2200, "Master Debater")]
-
 BADGES = {
     "first_words": ("🎤", "First Words", "Finish your first debate"),
-    "evidence_hunter": ("🔎", "Evidence Hunter", "Score 4+ on Evidence in a debate"),
-    "tight_logic": ("🧩", "Tight Logic", "Score 4+ on Logic in a debate"),
-    "rebuttal_ready": ("🛡️", "Rebuttal Ready", "Score 4+ on Rebuttal in a debate"),
+    "evidence_hunter": ("🔎", "Evidence Hunter", "Score 4 or more on Evidence in a debate"),
+    "tight_logic": ("🧩", "Tight Logic", "Score 4 or more on Logic in a debate"),
+    "rebuttal_ready": ("🛡️", "Rebuttal Ready", "Score 4 or more on Rebuttal in a debate"),
     "weakness_slayer": ("⚔️", "Weakness Slayer", "Pass a training exercise on your weakest skill"),
-    "comeback": ("📈", "Comeback", "Improve your overall score vs. the last debate"),
-    "on_fire": ("🔥", "On Fire", "3-day practice streak"),
+    "comeback": ("📈", "Comeback", "Improve your overall score against the last debate"),
+    "on_fire": ("🔥", "On Fire", "Practise on three days in a row"),
     "explorer": ("🧭", "Explorer", "Debate in 3 different categories"),
     "level_up": ("🚀", "Level Up", "Reach Claim Crafter"),
 }
@@ -81,12 +90,12 @@ def skill_scores(scores: dict) -> dict:
 
 
 def band(v: float) -> str:
-    """Label used on score cards (scale 1–5)."""
+    """Label used on score cards (scale 1 to 5)."""
     return "Strong" if v >= 4 else "Proficient" if v >= 3.2 else "Developing" if v >= 2.5 else "Needs improvement"
 
 
 def outcome(prev_overall, overall) -> str:
-    """Honest replacement for win/loss: the AI is not a judge, so compare you with your last self."""
+    """Honest replacement for win or loss: the AI is not a judge, so compare you with your last self."""
     if prev_overall is None:
         return "baseline"
     d = overall - prev_overall
@@ -94,7 +103,7 @@ def outcome(prev_overall, overall) -> str:
 
 
 def finish_debate(state: dict, debate: dict, history: list, full: bool, today=None):
-    """Apply XP/badges for a finished debate. Returns (new_state, report). Does not mutate inputs."""
+    """Apply XP and badges for a finished debate. Returns (new_state, report). Does not mutate inputs."""
     s = {**state, "badges": list(state["badges"]), "recent_topics": list(state.get("recent_topics", []))}
     before = level_info(s["xp"])
     touch_streak(s, today)
@@ -106,15 +115,19 @@ def finish_debate(state: dict, debate: dict, history: list, full: bool, today=No
 
     def give(key):
         if key not in s["badges"]:
-            s["badges"].append(key); earned.append(key)
+            s["badges"].append(key)
+            earned.append(key)
+
     give("first_words")
     if full:
         for dim, key in (("evidence_quality", "evidence_hunter"), ("logical_validity", "tight_logic"),
                          ("rebuttal_readiness", "rebuttal_ready")):
             if scores.get(dim, 0) >= 4:
-                breakdown.append((f"Strong {DIM_LABEL[dim].lower()}", 20)); give(key)
+                breakdown.append((f"Strong {DIM_LABEL[dim].lower()}", 20))
+                give(key)
         if oc == "improved":
-            breakdown.append(("Beat your last score", 30)); give("comeback")
+            breakdown.append(("Beat your last score", 30))
+            give("comeback")
     if len({h["category"] for h in history} | {debate.get("category")}) >= 3:
         give("explorer")
     if s["streak"] >= 3:
@@ -135,7 +148,8 @@ def training_result(state: dict, weakest_dim: str, kind_dim: str, passed: bool, 
     s["xp"] += gain
     earned = []
     if passed and kind_dim == weakest_dim and "weakness_slayer" not in s["badges"]:
-        s["badges"].append("weakness_slayer"); earned.append("weakness_slayer")
+        s["badges"].append("weakness_slayer")
+        earned.append("weakness_slayer")
     return s, {"xp_gained": gain, "badges": earned, "level_up": level_info(s["xp"])["level"] > before}
 
 
@@ -154,8 +168,7 @@ def profile_stats(debates: list, training: list) -> dict:
             weak_counts[x["weakness"]] = weak_counts.get(x["weakness"], 0) + 1
     outcomes = {k: sum(1 for x in debates if x.get("outcome") == k) for k in ("improved", "held", "dipped")}
     return {"debates": n, "latest": latest, "avg_dims": avg,
-            "overall_now": overall[-1] if overall else None,
-            "overall_first": overall[0] if overall else None,
+            "overall_now": overall[-1] if overall else None, "overall_first": overall[0] if overall else None,
             "trend": overall, "weak_counts": weak_counts, "outcomes": outcomes,
             "training_attempts": len(training), "training_passed": sum(t["passed"] for t in training),
             "skills": skill_scores(latest["scores"]) if latest else {},
@@ -165,15 +178,15 @@ def profile_stats(debates: list, training: list) -> dict:
 def quests(state: dict, debates: list, training: list) -> list:
     """Three small goals; (id, title, done, progress text)."""
     cats = {d["category"] for d in debates}
-    items = [("debate1", "Complete a debate", len(debates) >= 1, f"{min(len(debates),1)}/1"),
+    items = [("debate1", "Complete a debate", len(debates) >= 1, f"{min(len(debates), 1)}/1"),
              ("train1", "Pass a training exercise", any(t["passed"] for t in training),
-              f"{min(sum(t['passed'] for t in training),1)}/1"),
-             ("explore3", "Debate in 3 categories", len(cats) >= 3, f"{min(len(cats),3)}/3")]
+              f"{min(sum(t['passed'] for t in training), 1)}/1"),
+             ("explore3", "Debate in 3 categories", len(cats) >= 3, f"{min(len(cats), 3)}/3")]
     return [{"id": i, "title": t, "done": d, "progress": p} for i, t, d, p in items]
 
 
 def recommend(stats: dict, state: dict):
-    """Next-debate recommendation: target the most frequent / lowest skill, step difficulty by overall."""
+    """Next debate recommendation: target the most frequent or lowest skill, step difficulty by overall."""
     from . import topics as T
     latest = stats["latest"]
     if not latest:
