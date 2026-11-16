@@ -1,0 +1,13 @@
+Hi,
+
+Thank you for helping with my final-year research on an AI debate-training system. I would like you to rate some AI replies.
+
+What to do (about 45 minutes):
+1. Open the attached Excel file. Start on the 'Ratings' sheet, where the instructions are at the top (more detail is on the 'Instructions' sheet).
+2. Each row is a short student argument, the main weakness of that argument, and an AI opponent's reply.
+3. For every row, fill the three blue columns: how well the reply targets the weakness (1 to 5), how helpful it is for the student's next argument (1 to 5), and whether it writes the student's argument for them (yes or no).
+4. Save the file and email it back. Please keep the file name the same.
+
+Please work on your own and do not discuss the rows with the other rater until you have both finished. Please do not use an AI tool to help you; I need your own judgement. You will only be named as 'Rater B'. Taking part is voluntary and you may stop at any time.
+
+Thank you very much!

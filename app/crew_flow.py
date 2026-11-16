@@ -1,6 +1,8 @@
 """CrewAI orchestration (thesis 5.4 and 6.12).
 
-One debate turn is ONE sequential CrewAI crew of six role based agents:
+One debate turn is ONE sequential CrewAI crew of seven role based agents (thesis Table 4.8):
+
+    Debate Orchestrator        rule  checks the session, loads topic, side, turn number and conversation state
 
     Argument Analyzer          LLM   extracts the Toulmin components
     Argument Scorer            LLM   scores seven dimensions from 1 to 5, using the analysis as context
@@ -12,14 +14,17 @@ One debate turn is ONE sequential CrewAI crew of six role based agents:
 How it works, so you can explain it in the viva
   * Every agent is a real crewai.Agent with a role, goal and backstory, and every step is a
     crewai.Task chained with context=[...], so the output of one agent is what the next agent reads.
-  * The LLM agents run on your local Ollama model through a small adapter (ModelLLM), so temperature 0,
-    seed 7, JSON mode and the output caps stay exactly as in Chapter 7.
+  * The LLM agents run on your local Ollama model through a small adapter (ModelLLM). Temperature 0,
+    seed 7, JSON mode and the output caps are fixed implementation settings (Chapter 7 itself names
+    only Llama 3 8B served through Ollama).
   * The two deterministic agents (Strategist, Tracker) use RuleLLM: still CrewAI agents, but they answer
     from code instead of from a model. That keeps the closed loop auditable and costs no model time.
   * A task callback validates each output (clamps scores, validates the diagnosis, applies the guardrails)
     and rewrites it, so the NEXT agent only ever sees validated data.
+  * If the diagnosis or opponent call fails after retries, the crew degrades exactly like the plain
+    runner (rule based diagnosis, guardrail fallback reply) instead of failing the whole turn (NFR06).
 
-Install:  pip install crewai      Switch off with ORCHESTRATOR=python (plain functions, same results).
+Install:  pip install crewai      Switch off with ORCHESTRATOR=python (plain functions, same logic).
 """
 import json
 import logging
@@ -89,6 +94,11 @@ def _classes():
                     return out
                 except ValueError as e:
                     last = e
+            if self.task in ("diagnose", "oppose"):
+                # NFR06: same behaviour as the plain runner. An empty object makes resolve_diagnosis use the
+                # rule, and guard_reply use the deterministic fallback reply (recorded as fallback_used).
+                self.ctx["timings"][self.task] = round(time.time() - t, 1)
+                return "{}"
             raise RuntimeError(f"LLM failed for task {self.task}: {last}")
 
     class RuleLLM(_Base):
@@ -121,12 +131,19 @@ def run_turn(db, llm, sid, topic, side, history, argument, previous, finish):
     t_start = time.time()
     ctx = {"timings": {}}
     prev_weak = previous["weakness"] if previous else None
+    convo = A.fmt_convo(db.conversation(sid))     # thesis 3.11.5: the opponent reads the conversation history
 
     def agent(role, goal, backstory, model):
         return Agent(role=role, goal=goal, backstory=backstory, llm=model, allow_delegation=False,
                      verbose=False, max_retry_limit=0, max_iter=3)
 
     # ---------------------------------------------------------------- rule based steps
+    def orchestrator_fn():
+        ctx["state"] = {"session_id": sid, "topic": topic, "student_side": side,
+                        "turn_number": db.next_turn_number(sid), "earlier_turns": len(db.conversation(sid, 50)),
+                        "previous_weakness": prev_weak}
+        return ctx["state"]
+
     def strategist_fn():
         repeats = sum(1 for h in db.history(sid) if h["weakness"] == ctx["diagnosis"]["lowest_weakness"])
         ctx["intervention"] = A.strategise(ctx["diagnosis"], prev_weak, repeats)
@@ -143,6 +160,10 @@ def run_turn(db, llm, sid, topic, side, history, argument, previous, finish):
     use_llm_diag = os.getenv("DIAG_USE_LLM", "1") != "0"
 
     # ---------------------------------------------------------------- agents
+    orchestrator = agent("Debate Orchestrator",
+                         "Manage the debate session: topic, side, turn order and conversation state.",
+                         "You keep the session state and hand each validated student argument to the analysis team.",
+                         RuleLLM("orchestrate", orchestrator_fn, ctx))
     analyst = agent("Argument Analyzer",
                     "Extract the Toulmin components of the student's argument as JSON.",
                     "You are a careful argumentation analyst. You extract only what the student wrote.",
@@ -192,8 +213,11 @@ def run_turn(db, llm, sid, topic, side, history, argument, previous, finish):
         out.raw = json.dumps({"ai_opponent_response": ctx["reply"]})
 
     # ---------------------------------------------------------------- tasks (chained by context)
+    t0 = Task(description="Confirm the active debate session and load its state (topic, side, turn number, history).",
+              expected_output="One JSON object with the session state.", agent=orchestrator)
     t1 = Task(description=A.ANALYSE_PROMPT.format(topic=topic, side=side, history=history[-3:], argument=argument),
-              expected_output="One JSON object with the Toulmin components.", agent=analyst, callback=cb_analyse)
+              expected_output="One JSON object with the Toulmin components.", agent=analyst, context=[t0],
+              callback=cb_analyse)
     t2 = Task(description=A.SCORE_PROMPT.format(topic=topic, side=side, analysis=A.FROM_CONTEXT, argument=argument),
               expected_output="One JSON object with seven scored dimensions.", agent=scorer, context=[t1],
               callback=cb_score)
@@ -205,7 +229,7 @@ def run_turn(db, llm, sid, topic, side, history, argument, previous, finish):
                           "weakness to intervention map.",
               expected_output="One JSON object with the intervention type and description.", agent=strategist,
               context=[t3])
-    t5 = Task(description=A.OPPONENT_PROMPT.format(topic=topic, side=side, argument=argument,
+    t5 = Task(description=A.OPPONENT_PROMPT.format(topic=topic, side=side, argument=argument, history=convo,
                                                    weakness=A.FROM_CONTEXT, reason=A.FROM_CONTEXT,
                                                    instruction=A.FROM_CONTEXT),
               expected_output="One JSON object with the opponent reply.", agent=opponent, context=[t3, t4],
@@ -213,7 +237,7 @@ def run_turn(db, llm, sid, topic, side, history, argument, previous, finish):
     t6 = Task(description="Compare this turn with the previous turn, then store the turn in the database.",
               expected_output="One JSON object with the progress summary.", agent=tracker, context=[t2, t3, t5])
 
-    Crew(agents=[analyst, scorer, diagnostician, strategist, opponent, tracker], tasks=[t1, t2, t3, t4, t5, t6],
+    Crew(agents=[orchestrator, analyst, scorer, diagnostician, strategist, opponent, tracker], tasks=[t0, t1, t2, t3, t4, t5, t6],
          process=Process.sequential, verbose=False).kickoff()
 
     ctx["timings"]["total"] = round(time.time() - t_start, 1)

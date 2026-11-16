@@ -201,6 +201,103 @@ p{line-height:1.6}
 .badge-t span{font-size:1.8rem} .badge-t.off{opacity:.35;filter:grayscale(1)}
 .hist-row{display:flex;gap:12px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 16px;margin:6px 0}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---------------- layout fixes: header, profile head, sign in tabs, facts ---------------- */
+.st-key-topbar [data-testid="stColumn"]>div{display:flex;align-items:center}
+.st-key-topbar .stButton{margin:0}
+.st-key-profile_head{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:18px 22px;box-shadow:var(--shadow);margin-bottom:14px}
+.st-key-profile_head [data-testid="stHorizontalBlock"]{align-items:center}
+.st-key-pr_logout button{border:1px solid var(--line);background:#fff;color:var(--ink2);width:100%}
+.st-key-auth_card .stTabs [data-baseweb="tab-list"]{margin-bottom:12px}
+.st-key-auth_card .stButton>button{width:100%}
+.st-key-hero .stButton>button{white-space:nowrap}
+.st-key-roadmap{margin-top:6px}
+.rm-card summary{outline:none}
+.profile-top{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.hero-photo{width:100%;border-radius:20px;display:block;aspect-ratio:4/3;object-fit:cover;box-shadow:0 16px 40px rgba(0,0,0,.35)}
+
+/* ================= design refresh: header, hero buttons, icons, argument map, objectives, mastery ================= */
+.brand{padding-right:18px;margin-right:8px;border-right:1px solid var(--line)}
+.brand .dot{font-size:0;color:#fff} .brand .dot svg{width:20px;height:20px}
+.st-key-topbar{padding:8px 16px}
+.st-key-topbar [data-testid="stHorizontalBlock"]{align-items:center!important;gap:.35rem!important;flex-wrap:nowrap!important}
+.st-key-topbar [data-testid="stElementContainer"]{width:auto!important;margin:0!important}
+.st-key-topbar .stButton>button{height:40px;min-height:40px;padding:0 18px;border-radius:10px;font-weight:600;
+  display:flex;align-items:center;justify-content:center}
+.st-key-topbar .stButton>button p{font-size:.92rem;line-height:1;margin:0}
+.chip-user{gap:8px;margin-right:8px}
+.chip-user b,.chip-user i{display:inline-flex;align-items:center;height:32px;padding:0 14px;box-sizing:border-box}
+.st-key-nav_logout button{height:40px!important}
+
+/* hero buttons: the pale paragraph colour must not reach the text inside a button */
+.st-key-hero .stButton>button{min-height:52px;border-radius:12px;padding:.7rem 1.6rem}
+.st-key-hero .stButton>button p{color:inherit!important;max-width:none!important;margin:0;font-size:1rem;font-weight:700;line-height:1.2}
+.st-key-cta_start button,.st-key-cta_start button p{color:var(--navy)!important}
+.st-key-cta_start button:hover{background:var(--blue-l)!important;box-shadow:0 10px 24px rgba(0,0,0,.25)!important}
+.st-key-cta_how button,.st-key-cta_how button p{color:#fff!important}
+
+/* icons */
+.fact .ic,.mod .ic,.rm-ic{color:var(--blue2)} .rm-item.done .rm-ic{color:var(--green2)}
+.fact .ic svg,.mod .ic svg,.rm-ic svg{width:22px;height:22px}
+.badge-t span{display:grid;place-items:center;height:34px;color:var(--blue2)} .badge-t span svg{width:28px;height:28px}
+.qi{display:inline-flex;vertical-align:-3px;margin-right:4px}
+.callout.green .qi{color:var(--green2)}
+
+/* argument map */
+.tm{border:1px solid var(--line);border-radius:18px;padding:16px;background:#fff;margin:6px 0 14px}
+.tm-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.tm-meter{display:flex;align-items:center;gap:10px;font-size:.82rem;color:var(--muted);font-weight:600}
+.tm-seg{display:flex;gap:4px} .tm-seg i{width:26px;height:8px;border-radius:99px;background:#e8eef8} .tm-seg i.on{background:var(--green)}
+.tm-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;
+  grid-template-areas:"g w c" "b q r"}
+.tm-c{position:relative;border-radius:14px;padding:12px 14px;background:var(--panel);border:1px solid var(--line);min-width:0}
+.tm-c.ok{background:#fff;border-left:4px solid var(--green)}
+.tm-c.miss{background:#fff;border:1.5px dashed #b9c6dd}
+.tm-c.miss .tm-b{color:var(--muted);font-style:italic}
+.tm-c.gap{border-color:var(--blue);box-shadow:0 0 0 3px rgba(29,95,209,.16)}
+.tm-focus{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;background:var(--navy);color:#fff;border-radius:12px;padding:10px 16px;font-size:.92rem}
+.tm-fk{font-size:.66rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#9fc2ff}
+.tm-h{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.tm-k{font-weight:800;color:var(--navy);font-size:.95rem}
+.tm-s{font-size:.64rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;border-radius:99px;padding:3px 9px;white-space:nowrap}
+.tm-c.ok .tm-s{background:var(--green-l);color:var(--green2)} .tm-c.miss .tm-s{background:var(--blue-l);color:var(--blue2)}
+.tm-c.gap .tm-s{background:var(--navy);color:#fff}
+.tm-sub{font-size:.76rem;color:var(--muted);margin:2px 0 6px}
+.tm-b{font-size:.9rem;line-height:1.45;word-break:break-word}
+.a-g{grid-area:g}.a-w{grid-area:w}.a-c{grid-area:c}.a-b{grid-area:b}.a-q{grid-area:q}.a-r{grid-area:r}.a-f{grid-area:f}
+.a-g:after,.a-w:after{content:"";position:absolute;right:-14px;top:50%;width:14px;height:2px;background:var(--blue-m)}
+.a-g:before,.a-w:before{content:"";position:absolute;right:-15px;top:50%;margin-top:-4px;border:5px solid transparent;border-left:7px solid var(--blue-m);border-right:0}
+@media(max-width:760px){.tm-grid{grid-template-columns:1fr;grid-template-areas:"c" "g" "w" "b" "q" "r"}
+  .a-g:after,.a-w:after,.a-g:before,.a-w:before{display:none}}
+
+/* score bars and objectives */
+.sbox,.obox{border:1px solid var(--line);border-radius:18px;padding:14px 16px;background:#fff;margin-bottom:14px}
+.sb-head,.ob-head{display:flex;gap:10px;align-items:baseline;margin-bottom:8px}
+.sb-ov{margin-left:auto;background:var(--blue-l);border-radius:99px;padding:4px 12px;font-weight:600;color:var(--navy)}
+.bar.hi>i{background:var(--green)} .bar.mid>i{background:var(--blue)} .bar.lo>i{background:#7f9bc9}
+.ob-head{align-items:center}
+.ob-pts{margin-left:auto;display:inline-flex;gap:6px;align-items:center;background:var(--navy);color:#fff;border-radius:99px;padding:4px 12px;font-weight:700;font-size:.82rem}
+.ob{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:.92rem}
+.ob-i{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;flex:none;color:#fff}
+.ob.ok .ob-i{background:var(--green);border-color:var(--green)} .ob-t{flex:1}
+.ob-p{font-weight:700;color:var(--muted)} .ob.ok .ob-p{color:var(--green2)}
+
+/* skill mastery */
+.msg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:10px}
+.ms{border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:#fff}
+.ms-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-weight:600;color:var(--navy)}
+.ms-h b{font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;border-radius:99px;padding:3px 9px;background:var(--blue-l);color:var(--blue2)}
+.ms.t3 .ms-h b,.ms.t4 .ms-h b{background:var(--green-l);color:var(--green2)}
+.ms .muted{margin-top:6px;font-size:.78rem}
+
+/* Streamlit gives every markdown block margin-bottom:-1rem to cancel a paragraph's margin. HTML blocks (cards, chips) have no
+   such paragraph, so that negative margin only swallows the gap below them (a button touching the card above it) and, in
+   the header, shrinks the chip's slot so it drops below the nav text. Remove it when the block ends with an HTML element. */
+[data-testid="stMarkdownContainer"]:has(> div:last-child),[data-testid="stMarkdownContainer"]:has(> svg:last-child){margin-bottom:0!important}
+.st-key-topbar [data-testid="stMarkdownContainer"]{margin-bottom:0!important}
+.st-key-topbar .stButton>button p,.st-key-topbar .stButton>button [data-testid="stMarkdownContainer"]{display:block!important;line-height:1!important;margin:0!important}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:stretch;margin-bottom:6px}
+@media(max-width:760px){.pair{grid-template-columns:1fr}}
 """
 
 
@@ -210,4 +307,4 @@ def inject(st):
 
 def active_nav_css(key: str) -> str:
     return (f"<style>.st-key-nav_{key} .stButton>button,.st-key-nav_{key} button"
-            "{background:var(--blue-l)!important;color:var(--blue2)!important}</style>")
+            "{background:var(--blue-l)!important;color:var(--blue2)!important;box-shadow:inset 0 -3px 0 var(--blue)!important}</style>")

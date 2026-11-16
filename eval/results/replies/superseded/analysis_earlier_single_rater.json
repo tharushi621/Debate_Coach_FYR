@@ -1,0 +1,55 @@
+{
+  "WARNING": "The two raters' ratings are IDENTICAL in every row for: targets, ghost. This is NOT independent two-rater data for those questions. Do not report agreement for them. Report as a single rater, or collect an independent second rating.",
+  "rater_agreement_qwk": null,
+  "mean_by_arm": {
+    "adaptive": {
+      "targets": 4.4,
+      "helpful": 3.92
+    },
+    "generic": {
+      "targets": 2.67,
+      "helpful": 2.82
+    },
+    "single_call": {
+      "targets": 4.77,
+      "helpful": 4.27
+    }
+  },
+  "ghostwriting_rate_by_arm": {
+    "adaptive": 0.0,
+    "generic": 0.0,
+    "single_call": 0.0
+  },
+  "targets: adaptive vs generic": {
+    "win": 24,
+    "tie": 5,
+    "loss": 1,
+    "mean_diff": 1.73,
+    "wilcoxon_p": "<0.0001",
+    "n_items": 30
+  },
+  "targets: adaptive vs single_call": {
+    "win": 3,
+    "tie": 18,
+    "loss": 9,
+    "mean_diff": -0.37,
+    "wilcoxon_p": 0.0652,
+    "n_items": 30
+  },
+  "helpful: adaptive vs generic": {
+    "win": 25,
+    "tie": 2,
+    "loss": 3,
+    "mean_diff": 1.1,
+    "wilcoxon_p": "<0.0001",
+    "n_items": 30
+  },
+  "helpful: adaptive vs single_call": {
+    "win": 5,
+    "tie": 14,
+    "loss": 11,
+    "mean_diff": -0.35,
+    "wilcoxon_p": 0.0487,
+    "n_items": 30
+  }
+}

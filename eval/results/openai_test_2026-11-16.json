@@ -1,0 +1,177 @@
+{
+  "date": "2026-11-16",
+  "backend": "openai",
+  "model": "openai/gpt-oss-20b",
+  "split": "test",
+  "prompt_hash": "625114951b1a",
+  "diag_use_llm": true,
+  "system": {
+    "n": 21,
+    "correct": 12,
+    "accuracy": 0.5714285714285714,
+    "ci95": [
+      0.3654621629703244,
+      0.7553030051347894
+    ],
+    "kappa": 0.4946524064171123
+  },
+  "baselines": {
+    "majority_class": {
+      "label": "see ch7_results.json",
+      "n": 21,
+      "correct": 4,
+      "accuracy": 0.19047619047619047,
+      "ci95": [
+        0.07667440615177301,
+        0.40000986539273287
+      ],
+      "kappa": 0.0
+    },
+    "single_prompt_llm": {
+      "n": 21,
+      "correct": 16,
+      "accuracy": 0.7619047619047619,
+      "ci95": [
+        0.5490841802765406,
+        0.8937214361088773
+      ],
+      "kappa": 0.7115384615384615
+    }
+  },
+  "llm_diagnosis_accepted": 38,
+  "rule_fallback_used": 1,
+  "human_labeller_kappa": 0.7420583157923648,
+  "n_human_labellers": 8,
+  "test_split_runs_so_far": 1,
+  "per_class": {
+    "insufficient_evidence": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 0.0
+    },
+    "irrelevant_evidence": {
+      "precision": 0.6666666666666666,
+      "recall": 0.5,
+      "f1-score": 0.5714285714285714,
+      "support": 4.0
+    },
+    "logical_fallacy": {
+      "precision": 0.6666666666666666,
+      "recall": 0.6666666666666666,
+      "f1-score": 0.6666666666666666,
+      "support": 3.0
+    },
+    "missing_warrant": {
+      "precision": 0.2,
+      "recall": 0.5,
+      "f1-score": 0.2857142857142857,
+      "support": 2.0
+    },
+    "overgeneralisation": {
+      "precision": 1.0,
+      "recall": 0.75,
+      "f1-score": 0.8571428571428571,
+      "support": 4.0
+    },
+    "poor_relevance": {
+      "precision": 1.0,
+      "recall": 0.25,
+      "f1-score": 0.4,
+      "support": 4.0
+    },
+    "unclear_claim": {
+      "precision": 0.6,
+      "recall": 0.75,
+      "f1-score": 0.6666666666666666,
+      "support": 4.0
+    },
+    "accuracy": 0.5714285714285714,
+    "macro avg": {
+      "precision": 0.5904761904761904,
+      "recall": 0.4880952380952381,
+      "f1-score": 0.49251700680272104,
+      "support": 21.0
+    },
+    "weighted avg": {
+      "precision": 0.7365079365079366,
+      "recall": 0.5714285714285714,
+      "f1-score": 0.5977324263038548,
+      "support": 21.0
+    }
+  },
+  "confusion_labels": [
+    "insufficient_evidence",
+    "irrelevant_evidence",
+    "logical_fallacy",
+    "missing_warrant",
+    "overgeneralisation",
+    "poor_relevance",
+    "unclear_claim"
+  ],
+  "confusion": [
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      2,
+      0,
+      0,
+      0,
+      0,
+      2
+    ],
+    [
+      0,
+      0,
+      2,
+      1,
+      0,
+      0,
+      0
+    ],
+    [
+      1,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      1,
+      0,
+      3,
+      0,
+      0
+    ],
+    [
+      0,
+      1,
+      0,
+      2,
+      0,
+      1,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      3
+    ]
+  ]
+}

@@ -3,7 +3,10 @@ Reads eval/data/sample_arguments.csv and writes, into eval/data/labelling/:
   labeller_A.csv, labeller_B.csv  - what each labeller receives (no intended label; different item order)
   key.csv                         - KEEP PRIVATE: item_id -> original id, intended weakness, dev/test split
   LABELLING_GUIDE.md              - definitions and rules to hand to both labellers
-The dev split (about 22%, at least one per weakness) is for prompt tuning; the test split is for the final reported run."""
+The dev split (about 22%, at least one per weakness) is for prompt tuning; the test split is for the final reported run.
+
+Safety: if either labeller sheet already contains labels, this script refuses to run, so completed labelling
+can never be overwritten by accident. To rebuild from scratch on purpose, move or delete eval/data/labelling first."""
 import os
 import random
 
@@ -25,7 +28,21 @@ DEFS = {
 }
 
 
+def has_labels(out_dir):
+    """True if any existing labeller sheet already has at least one filled weakness_label."""
+    for name in ("labeller_A.csv", "labeller_B.csv"):
+        path = f"{out_dir}/{name}"
+        if os.path.exists(path):
+            sheet = pd.read_csv(path)
+            if "weakness_label" in sheet and sheet["weakness_label"].notna().any():
+                return True
+    return False
+
+
 def build(cand_path="eval/data/sample_arguments.csv", out_dir="eval/data/labelling"):
+    if has_labels(out_dir):
+        raise SystemExit(f"Refusing to overwrite: the sheets in {out_dir} already contain labels. "
+                         f"Move or delete {out_dir} first if you really want to rebuild.")
     df = pd.read_csv(cand_path)
     if "source" not in df:
         df["source"] = "researcher"

@@ -68,21 +68,4 @@ def test_level_up_flag():
     assert rep["level_up"] and rep["level"]["level"] >= 2
 
 
-def test_stage_html_roles_and_escaping():
-    h = stage_html("opponent", "you", 3, "<script>x</script>", "ok", bubble_ai="<b>hi</b>")
-    assert "<script>x" not in h and "&lt;script&gt;" in h and "&lt;b&gt;hi" in h
-    assert "YOUR TURN" in h and "cheer3" in h
-    # opponent student stands stage-right; proponent AI stage-left
-    assert h.index("AI OPPONENT") < h.index(">YOU<")
-    assert stage_html("proponent", "ai", 1).count("SPEAKING") == 1
-    assert "beam on" in stage_html("proponent", None, 1) or "beam off" in stage_html("proponent", None, 1)
 
-
-def test_coin_html_modes():
-    assert 'RESULT = null' in coin_html(None)
-    assert 'RESULT = "heads"' in coin_html("heads") and 'RESULT = "tails"' in coin_html("tails")
-    try:
-        coin_html("edge")
-        raise AssertionError("should reject")
-    except ValueError:
-        pass

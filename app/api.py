@@ -1,5 +1,7 @@
 """FastAPI backend. Run: uvicorn app.api:app --port 8000     (interactive docs: http://127.0.0.1:8000/docs)
 
+Endpoints (thesis Table 6.3): GET /topics, POST /users, POST /sessions, POST /debate/turn, GET /sessions/{id}/next-turn.
+Also: GET /health, GET /sessions/{id}/history, POST /feedback (the pilot questionnaire, thesis 7.9).
 Env: LLM_BACKEND=ollama|openai, ORCHESTRATOR=crewai|python, DEBATE_DB=debate.db, WARMUP=1|0
 """
 import os
@@ -13,14 +15,7 @@ from .llm import make_llm
 from .pipeline import process_turn
 from .validation import ValidationError
 
-TOPICS = [
-    "Social media should be banned for children under 16.",
-    "Artificial intelligence should be used to grade student assignments.",
-    "Universities should replace written examinations with project based assessment.",
-    "Remote learning is more effective than traditional classroom learning.",
-    "Governments should regulate the use of generative AI tools.",
-]
-ARMS = ["adaptive", "single", "generic"]
+from .topics import THESIS_MOTIONS, check_motion  # noqa: E402
 
 
 def build_app(db=None, llm=None):
@@ -51,7 +46,7 @@ def build_app(db=None, llm=None):
         user_id: int
         topic: str
         student_side: str
-        mode: str = "adaptive"       # adaptive | single | generic | random (balanced assignment for the study)
+        mode: str = "adaptive"       # kept for client compatibility; only "adaptive" exists (thesis 7.12: no control group)
 
     class TurnIn(BaseModel):
         session_id: int
@@ -77,7 +72,24 @@ def build_app(db=None, llm=None):
 
     @app.get("/topics")
     def topics():
-        return TOPICS
+        return app.state.db.topics()
+
+    class TopicIn(BaseModel):
+        motion: str
+
+    @app.post("/topics")
+    def add_topic(t: TopicIn):
+        try:
+            return {"motion": app.state.db.add_topic(check_motion(t.motion))}
+        except ValueError as e:
+            raise HTTPException(422, str(e))
+
+    @app.post("/sessions/{sid}/end")
+    def end_session(sid: int):
+        if not app.state.db.get_session(sid):
+            raise HTTPException(404, "session not found")
+        app.state.db.end_session(sid)
+        return {"session_id": sid, "status": "ended"}
 
     @app.post("/users")
     def users(u: UserIn):
@@ -89,19 +101,16 @@ def build_app(db=None, llm=None):
 
     @app.post("/sessions")
     def sessions(s: SessionIn):
-        if s.student_side not in ("proponent", "opponent") or s.mode not in ("adaptive", "single", "generic", "random"):
-            raise HTTPException(422, "invalid side or mode")
-        mode = s.mode
-        if mode == "random":     # balanced: assign to the arm with fewest sessions so far (random tie break)
-            import random
-            counts = {m: 0 for m in ARMS}
-            for r in app.state.db.all("SELECT mode, COUNT(*) n FROM debate_sessions GROUP BY mode"):
-                if r["mode"] in counts:
-                    counts[r["mode"]] = r["n"]
-            low = min(counts.values())
-            mode = random.choice([m for m, n in counts.items() if n == low])
-        sid = app.state.db.create_session(s.user_id, s.topic, s.student_side, mode)
-        return {"session_id": sid, "mode": mode if s.mode != "random" else "hidden"}
+        # Table 6.1 'Debate-side validation': the side must be proponent or opponent.
+        if s.student_side not in ("proponent", "opponent") or s.mode != "adaptive":
+            raise HTTPException(422, "invalid side or mode (only 'adaptive' is supported)")
+        try:
+            topic = check_motion(s.topic)
+        except ValueError as e:
+            raise HTTPException(422, str(e))
+        app.state.db.add_topic(topic) if topic not in app.state.db.topics() else None
+        sid = app.state.db.create_session(s.user_id, topic, s.student_side, "adaptive")
+        return {"session_id": sid, "mode": "adaptive"}
 
     @app.post("/debate/turn")
     def turn(t: TurnIn):
@@ -109,9 +118,9 @@ def build_app(db=None, llm=None):
             return process_turn(app.state.db, app.state.llm, t.session_id, t.argument)
         except ValidationError as e:
             raise HTTPException(400, str(e))
-        except KeyError:
+        except KeyError:        # Table 6.1 'Session validation'
             raise HTTPException(404, "session not found")
-        except RuntimeError as e:
+        except (RuntimeError, ConnectionError, TimeoutError) as e:
             raise HTTPException(503, f"LLM unavailable: {e}")
 
     @app.get("/sessions/{sid}/next-turn")
@@ -127,6 +136,8 @@ def build_app(db=None, llm=None):
         vals = [f.ease_of_use, f.clarity, f.ai_relevance, f.weakness_help, f.improvement_help, f.fairness, f.reuse]
         if any(not 1 <= v <= 5 for v in vals):
             raise HTTPException(422, "ratings must be between 1 and 5")
+        if not app.state.db.get_session(f.session_id):   # a rating must belong to a real session
+            raise HTTPException(404, "session not found")
         app.state.db.add_feedback(f.user_id, f.session_id, vals, f.comment)
         return {"ok": True}
 

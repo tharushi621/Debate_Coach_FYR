@@ -1,8 +1,18 @@
-"""Input validation + pre-processing (thesis 3.10.4, 3.10.5)."""
+"""Input validation + pre-processing (thesis 3.10.4, 3.10.5).
+
+Topic relevance is deliberately NOT a hard gate: off-topic input is a diagnosable weakness
+("poor_relevance") and should reach the diagnostician, not be rejected. soft_flags() IDENTIFIES it
+(Table 3.9) and shows the thesis wording to the student.
+"""
 import re
 
 from .llm import _toks
 from .taxonomy import MIN_ARGUMENT_CHARS
+
+# Typographic characters mapped to plain ASCII BEFORE special characters are removed, so that
+# "don’t" stays "don't" and the meaning of the student's argument is not altered (thesis 3.10.5).
+_TYPOGRAPHY = {0x2018: "'", 0x2019: "'", 0x201B: "'", 0x201C: '"', 0x201D: '"',
+               0x2013: "-", 0x2014: "-", 0x2212: "-", 0x00A0: " ", 0x2026: "..."}
 
 
 class ValidationError(ValueError):
@@ -10,7 +20,8 @@ class ValidationError(ValueError):
 
 
 def preprocess(text: str) -> str:
-    text = re.sub(r"\s+", " ", text or "").strip()
+    text = (text or "").translate(_TYPOGRAPHY)
+    text = re.sub(r"\s+", " ", text).strip()
     return re.sub(r"[^\w\s.,;:!?%'\"()\-/$&]", "", text)
 
 
@@ -25,8 +36,6 @@ def validate(argument: str, topic: str, previous: list[str]) -> str:
     if clean.lower() in {p.lower() for p in previous}:
         raise ValidationError("You already submitted this argument. Please revise it.")
     return clean
-    # Topic relevance is deliberately NOT a hard gate: off-topic input is a diagnosable
-    # weakness ("poor_relevance") and should reach the diagnostician, not be rejected.
 
 
 def soft_flags(clean: str, topic: str, analysis: dict | None = None) -> list[dict]:

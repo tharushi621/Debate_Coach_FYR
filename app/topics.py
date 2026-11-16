@@ -1,13 +1,23 @@
 """Topic bank for stage 01. Six categories x three difficulties (all original motions)."""
 import random
 
+# The five predefined motions named in thesis 3.10.1 / 6.4 (stored in the database, served by GET /topics).
+THESIS_MOTIONS = [
+    "Social media should be banned for children under 16.",
+    "Artificial intelligence should be used to grade student assignments.",
+    "Universities should replace written examinations with project-based assessment.",
+    "Remote learning is more effective than traditional classroom learning.",
+    "Governments should regulate the use of generative AI tools.",
+]
+
 CATEGORIES = {
-    "technology":  ("💻", "Technology"),
-    "education":   ("🎓", "Education"),
-    "politics":    ("🏛️", "Politics"),
-    "science":     ("🔬", "Science"),
-    "environment": ("🌿", "Environment"),
-    "society":     ("🤝", "Society"),
+    # (Material icon name used on the category buttons, label)
+    "technology":  ("memory", "Technology"),
+    "education":   ("school", "Education"),
+    "politics":    ("account_balance", "Politics"),
+    "science":     ("science", "Science"),
+    "environment": ("eco", "Environment"),
+    "society":     ("groups", "Society"),
 }
 DIFFICULTIES = {
     "beginner":     "Short motions with everyday evidence.",
@@ -72,3 +82,12 @@ def pick(category: str, difficulty: str, rng=None, exclude=()):
 def validate(category: str, difficulty: str):
     if category not in TOPICS or difficulty not in DIFFICULTIES:
         raise ValueError("unknown category or difficulty")
+
+def check_motion(text: str) -> str:
+    """Validate a learner-written motion; returns the cleaned motion or raises ValueError."""
+    m = " ".join((text or "").split())
+    if len(m) < 15 or len(m.split()) < 4:
+        raise ValueError("A motion should be a full statement of at least four words, e.g. 'Cities should ban cars.'")
+    if len(m) > 160:
+        raise ValueError("Keep the motion under 160 characters.")
+    return m if m[-1] in ".?!" else m + "."

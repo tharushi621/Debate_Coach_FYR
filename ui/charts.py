@@ -1,10 +1,13 @@
-"""Pure-HTML/SVG charts (no pandas/numpy/matplotlib: works on locked-down Windows machines)."""
+"""Pure-HTML/SVG charts (no pandas/numpy/matplotlib: works on locked-down Windows machines).
+Colours follow thesis 4.13.2: blue = primary, green = progress/strengths, dark blue = headings."""
 import math
 from html import escape
 
 from app.progress import DIMS, DIM_LABEL, band
 
-TEAL, GRID = "#0f8b7d", "#dfe7e5"
+BLUE, GREEN, NAVY = "#1d5fd1", "#1f9d63", "#0b2a5b"
+GRID, MUTED = "#e2e8f3", "#64748b"
+TEAL = BLUE  # backwards-compatible alias for any other module that still imports TEAL
 
 
 def radar_svg(values: dict, order=None, vmax=5, center=None, center_label="Overall score", size=470):
@@ -20,26 +23,27 @@ def radar_svg(values: dict, order=None, vmax=5, center=None, center_label="Overa
         g.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s"/>' % (cx, cy, *pt(i, R), GRID))
     pts = [pt(i, R * max(0, min(vmax, values.get(k) or 0)) / vmax) for i, k in enumerate(order)]
     poly = " ".join("%.1f,%.1f" % p for p in pts)
-    g.append(f'<polygon points="{poly}" fill="rgba(15,139,125,.45)" stroke="{TEAL}" stroke-width="2.5" '
+    g.append(f'<polygon points="{poly}" fill="rgba(29,95,209,.30)" stroke="{BLUE}" stroke-width="2.5" '
              'style="transform-origin:50% 50%;animation:rgrow .9s cubic-bezier(.2,.8,.2,1) both"/>')
     for i, k in enumerate(order):
         x, y = pts[i]
-        g.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="5" fill="#fff" stroke="{TEAL}" stroke-width="2.5"/>')
+        g.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="5" fill="#fff" stroke="{BLUE}" stroke-width="2.5"/>')
         lx, ly = pt(i, R + 34); vx, vy = pt(i, R * (values.get(k) or 0) / vmax + (-18 if True else 0))
         anchor = "middle" if abs(lx - cx) < 12 else "start" if lx > cx else "end"
-        g.append(f'<text x="{lx:.1f}" y="{ly:.1f}" text-anchor="{anchor}" font-size="13" fill="#2a3f3d" font-weight="500">{escape(DIM_LABEL.get(k, k))}</text>')
-        g.append(f'<text x="{lx:.1f}" y="{ly+16:.1f}" text-anchor="{anchor}" font-size="13" fill="{TEAL}" font-weight="700">{(values.get(k) or 0):.1f}</text>')
+        g.append(f'<text x="{lx:.1f}" y="{ly:.1f}" text-anchor="{anchor}" font-size="13" fill="{NAVY}" font-weight="600">{escape(DIM_LABEL.get(k, k))}</text>')
+        g.append(f'<text x="{lx:.1f}" y="{ly+16:.1f}" text-anchor="{anchor}" font-size="13" fill="{BLUE}" font-weight="700">{(values.get(k) or 0):.1f}</text>')
     mid = ""
     if center is not None:
-        mid = (f'<text x="{cx}" y="{cy+6}" text-anchor="middle" font-size="40" font-weight="700" fill="#1f3533">{center:.1f}</text>'
-               f'<text x="{cx}" y="{cy+28}" text-anchor="middle" font-size="12" fill="#4a6462">{escape(center_label)}</text>')
+        mid = (f'<text x="{cx}" y="{cy+6}" text-anchor="middle" font-size="40" font-weight="700" fill="{NAVY}">{center:.1f}</text>'
+               f'<text x="{cx}" y="{cy+28}" text-anchor="middle" font-size="12" fill="{MUTED}">{escape(center_label)}</text>')
     return (f'<svg viewBox="-110 0 {size+220} {size}" width="100%" style="max-width:{size+220}px;display:block;margin:auto" role="img" '
             f'aria-label="Radar chart of argument scores"><style>@keyframes rgrow{{from{{transform:scale(.1);opacity:0}}to{{transform:scale(1);opacity:1}}}}</style>'
             + "".join(g) + mid + "</svg>")
 
 
 def score_cards(values: dict, order=None, labels=None):
-    """Teal cards: big number, % bar and a band label (Strong/Proficient/Developing/Needs improvement)."""
+    """Cards: big number, % bar and a band label (Strong/Proficient/Developing/Needs improvement).
+    Styling (green = strength, amber = needs work) comes from the .sc rules in theme.py."""
     out = []
     for i, k in enumerate(order or list(values)):
         v = values.get(k)
@@ -55,6 +59,7 @@ def score_cards(values: dict, order=None, labels=None):
 
 
 def line_svg(values, width=640, height=190, vmax=5, vmin=1):
+    """Score trend across debates: a progress indicator, so the line is green."""
     if not values:
         return '<div class="muted">Your trend appears after your first debate.</div>'
     pad = 28; n = len(values)
@@ -62,17 +67,17 @@ def line_svg(values, width=640, height=190, vmax=5, vmin=1):
     y = lambda v: height - pad - (height - 2 * pad) * (v - vmin) / (vmax - vmin)
     pts = " ".join(f"{x(i):.1f},{y(v):.1f}" for i, v in enumerate(values))
     grid = "".join(f'<line x1="{pad}" x2="{width-pad}" y1="{y(v):.1f}" y2="{y(v):.1f}" stroke="{GRID}"/>'
-                   f'<text x="4" y="{y(v)+4:.1f}" font-size="11" fill="#7a8f8d">{v}</text>' for v in range(vmin, vmax + 1))
-    dots = "".join(f'<circle cx="{x(i):.1f}" cy="{y(v):.1f}" r="5" fill="#fff" stroke="{TEAL}" stroke-width="2.5"><title>Debate {i+1}: {v:.2f}</title></circle>'
+                   f'<text x="4" y="{y(v)+4:.1f}" font-size="11" fill="{MUTED}">{v}</text>' for v in range(vmin, vmax + 1))
+    dots = "".join(f'<circle cx="{x(i):.1f}" cy="{y(v):.1f}" r="5" fill="#fff" stroke="{GREEN}" stroke-width="2.5"><title>Debate {i+1}: {v:.2f}</title></circle>'
                    for i, v in enumerate(values))
-    line = f'<polyline points="{pts}" fill="none" stroke="{TEAL}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>' if n > 1 else ""
+    line = f'<polyline points="{pts}" fill="none" stroke="{GREEN}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>' if n > 1 else ""
     return (f'<svg viewBox="0 0 {width} {height}" width="100%" role="img" aria-label="Overall score per debate">{grid}{line}{dots}</svg>')
 
 
-def hbars(items, vmax=None, color=TEAL):
+def hbars(items, vmax=None, color=BLUE):
     """items: [(label, value)] horizontal bars."""
     if not items:
         return '<div class="muted">Nothing to show yet.</div>'
     vmax = vmax or max(v for _, v in items) or 1
-    return "".join(f'<div style="margin:8px 0"><div style="display:flex;justify-content:space-between;font-size:.88rem"><span>{escape(str(l))}</span><b>{v:g}</b></div>'
+    return "".join(f'<div style="margin:8px 0"><div style="display:flex;justify-content:space-between;font-size:.88rem;color:{NAVY}"><span>{escape(str(l))}</span><b>{v:g}</b></div>'
                    f'<div class="bar"><i style="width:{v/vmax*100:.0f}%;background:{color}"></i></div></div>' for l, v in items)

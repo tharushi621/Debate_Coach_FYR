@@ -43,17 +43,47 @@ TRAIN_KIND = {"unclear_claim": "clarity", "insufficient_evidence": "evidence", "
 LEVELS = [(0, "Curious Mind"), (150, "Argument Apprentice"), (400, "Claim Crafter"),
           (800, "Evidence Hunter"), (1400, "Rebuttal Ranger"), (2200, "Master Debater")]
 BADGES = {
-    "first_words": ("🎤", "First Words", "Finish your first debate"),
-    "evidence_hunter": ("🔎", "Evidence Hunter", "Score 4 or more on Evidence in a debate"),
-    "tight_logic": ("🧩", "Tight Logic", "Score 4 or more on Logic in a debate"),
-    "rebuttal_ready": ("🛡️", "Rebuttal Ready", "Score 4 or more on Rebuttal in a debate"),
-    "weakness_slayer": ("⚔️", "Weakness Slayer", "Pass a training exercise on your weakest skill"),
-    "comeback": ("📈", "Comeback", "Improve your overall score against the last debate"),
-    "on_fire": ("🔥", "On Fire", "Practise on three days in a row"),
-    "explorer": ("🧭", "Explorer", "Debate in 3 different categories"),
-    "level_up": ("🚀", "Level Up", "Reach Claim Crafter"),
+    "first_words": ("mic", "First Words", "Finish your first debate"),
+    "evidence_hunter": ("search", "Evidence Hunter", "Score 4 or more on Evidence in a debate"),
+    "tight_logic": ("link", "Tight Logic", "Score 4 or more on Logic in a debate"),
+    "rebuttal_ready": ("shield", "Rebuttal Ready", "Score 4 or more on Rebuttal in a debate"),
+    "weakness_slayer": ("target", "Weakness Slayer", "Pass a training exercise on your weakest skill"),
+    "comeback": ("trend", "Comeback", "Improve your overall score against the last debate"),
+    "on_fire": ("flame", "On Fire", "Practise on three days in a row"),
+    "explorer": ("compass", "Explorer", "Debate in 3 different categories"),
+    "level_up": ("award", "Level Up", "Reach Claim Crafter"),
 }
 PARTICIPATION_XP, TRAIN_PASS_XP, TRAIN_TRY_XP = 40, 25, 8
+OBJECTIVE_POINTS = 4        # per objective met in a round (5 objectives, 5 rounds: at most 100 extra XP per debate)
+MASTERY_TIERS = [(0, "Foundation"), (2.5, "Developing"), (3.2, "Proficient"), (4.0, "Advanced"), (4.5, "Expert")]
+
+
+def turn_objectives(r: dict):
+    """Round objectives read from this turn's analysis and scores (all produced by the system, nothing invented).
+    Returns ([(label, met, points)], points_earned)."""
+    sc, an = r.get("scores") or {}, r.get("analysis") or {}
+    checks = [("Make a clear, specific claim", sc.get("claim_clarity", 0) >= 4),
+              ("Support it with specific evidence", sc.get("evidence_quality", 0) >= 3 and bool(an.get("grounds"))),
+              ("Explain why the evidence supports the claim", sc.get("warrant_strength", 0) >= 3),
+              ("Answer the opposing view", sc.get("rebuttal_readiness", 0) >= 3),
+              ("Qualify your claim honestly", sc.get("qualification", 0) >= 3)]
+    objs = [(label, met, OBJECTIVE_POINTS) for label, met in checks]
+    return objs, sum(p for _, m, p in objs if m)
+
+
+def mastery(avg):
+    """Skill tier for one dimension from its average score (1 to 5)."""
+    if avg is None:
+        return None
+    idx = max(i for i, (t, _) in enumerate(MASTERY_TIERS) if avg >= t)
+    lo = MASTERY_TIERS[idx][0]
+    hi = MASTERY_TIERS[idx + 1][0] if idx + 1 < len(MASTERY_TIERS) else None
+    return {"tier": MASTERY_TIERS[idx][1], "tier_idx": idx, "score": avg, "next": MASTERY_TIERS[idx + 1][1] if hi else None,
+            "to_next": None if hi is None else round(hi - avg, 2), "pct": 1.0 if hi is None else round((avg - lo) / (hi - lo), 3)}
+
+
+def days(n: int) -> str:
+    return f"{n} day" + ("" if n == 1 else "s")
 
 
 def level_info(xp: int):
@@ -109,6 +139,8 @@ def finish_debate(state: dict, debate: dict, history: list, full: bool, today=No
     touch_streak(s, today)
     breakdown = [("Finished a debate", PARTICIPATION_XP)]
     scores = debate.get("scores") or {}
+    if full and debate.get("objective_points"):
+        breakdown.append(("Round objectives met", int(debate["objective_points"])))
     prev = history[-1]["overall"] if history else None
     oc = outcome(prev, debate.get("overall") or 0) if full else "n/a"
     earned = []

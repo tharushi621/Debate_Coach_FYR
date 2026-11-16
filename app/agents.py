@@ -1,24 +1,14 @@
-"""The six reasoning agents as plain, testable functions.
-
-The same prompts and the same post processing are used by two runners:
-  * app/crew_flow.py  : CrewAI agents (the default, matches thesis 5.4 and 6.12);
-  * app/pipeline.py   : plain Python calls (unit tests, control arms).
-
-Design decision (viva relevant): the LLM is used where language understanding is
-needed (Toulmin extraction, scoring, diagnosis proposal, reply wording). The decision
-logic that links diagnosis -> intervention is deterministic code, so the closed loop is
-auditable and reproducible instead of depending on a stochastic model.
-"""
+"""The six agents' logic as plain functions (thesis 5.4 and 6.2). crew_flow.py wraps the same logic in CrewAI agents;
+ORCHESTRATOR=python runs these functions directly. No mock data: every call needs a real LLM backend."""
 import os
 import re
 
-from .llm import _ABS
+from .llm import _ABS #_ABS variable is a regex used to identify absolute lang.
 from .taxonomy import (DEFAULT_SCORE, DIMENSION_TO_WEAKNESS, DIMENSIONS, INTERVENTION_INSTRUCTION,
                        INTERVENTION_MAP, PRIORITY, SCORE_MAX, SCORE_MIN, WEAKNESSES,
                        WEAKNESS_TO_COMPONENT, WEAKNESS_TO_DIMENSION)
 
-# ---------------------------------------------------------------- prompts
-# Short explanations on purpose: generation time on a local model is proportional to output length.
+#Prompts
 ANALYSE_PROMPT = """You are an argument analyst using Toulmin's model.
 Motion: {topic}
 Student side: {side}
@@ -26,12 +16,12 @@ Earlier turns: {history}
 Student argument: {argument}
 Return ONLY JSON:
 {{"main_claim":str,"grounds":[str],"warrant":str|null,"backing":str|null,"qualifier":str|null,"rebuttal":str|null,"missing_components":[str],"stance_matches_side":bool}}
-Extract only what the student actually wrote, each part in under 25 words. Use null when a component is absent."""
+Extract only what the student actually wrote, each part in under 12 words. Use null when a component is absent."""
 
 SCORE_PROMPT = """Score this debate argument 1 to 5 on each dimension using the rubric.
 Rubric (1 / 3 / 5): claim_clarity (unclear / broad / specific and debatable); evidence_quality (none / some relevant / strong specific); warrant_strength (missing / partial / clearly justified); relevance (off topic / partial / directly on motion); rebuttal_readiness (none / some / strong); logical_validity (major fallacy / minor weakness / coherent); qualification (overgeneralised / some / well qualified).
 Motion: {topic}. Side: {side}. Toulmin analysis: {analysis}. Argument: {argument}
-Return ONLY JSON with the seven dimensions, each as {{"score":int,"explanation":str}}. Each explanation must be under 15 words."""
+Return ONLY JSON with the seven dimensions, each as {{"score":int,"explanation":str}}. Each explanation must be under 8 words."""
 
 DIAG_PROMPT = """You are a weakness diagnostician for student debate arguments.
 Motion: {topic}. Student side: {side}.
@@ -40,23 +30,23 @@ Student argument: {argument}
 Pick the single most consequential weakness from: {weaknesses}. It should normally be the lowest scoring dimension.
 Return ONLY JSON:
 {{"lowest_weakness":str,"affected_component":str,"diagnosis_reason":str,"recommended_intervention":str}}
-Keep diagnosis_reason under 20 words."""
+Keep diagnosis_reason under 12 words."""
+
 
 OPPONENT_PROMPT = """You are a respectful debate opponent who is also a tutor. Motion: {topic}. The student argues as {side}; you argue the other side.
+Debate so far (oldest first):
+{history}
 Student's latest argument: {argument}
 Diagnosed weakness: {weakness} ({reason}). Intervention: {instruction}
-Rules: stay on the motion; target ONLY the diagnosed weakness; 2 to 4 sentences; Socratic, challenging but not discouraging; do NOT mention scores or the rubric; do NOT write or suggest the student's argument for them.
+Rules: stay on the motion;
+target ONLY the diagnosed weakness; 2 or 3 short sentences; Socratic, challenging but not discouraging; do NOT mention scores or the rubric; do NOT write or suggest the student's argument for them.
 Return ONLY JSON: {{"ai_opponent_response":str}}"""
 
-SINGLE_PROMPT = """You are a debate coach and opponent in one. Motion: {topic}. The student argues as {side}.
-Student argument: {argument}
-Give short feedback on the argument and a reply as the opposing debater. Do not write the student's argument for them.
-Return ONLY JSON: {{"feedback":str,"ai_opponent_response":str}}"""
+# Used by the CrewAI path. the previous agent's output reaches the next agent through the task context.
+FROM_CONTEXT = "(given by the previous agent in the context below)" # A helper string for CrewAI implementation
 
-# Used by the CrewAI path: the previous agent's output reaches the next agent through the task context.
-FROM_CONTEXT = "(given by the previous agent in the context below)"
-
-# Deterministic fallback wording (also the guardrail fallback if the LLM breaks the rules).
+# guardrail fallback if the LLM breaks the rules. This dictionary contain predefined responses.
+# This is called as a Fallback mechanism.
 FALLBACK = {
     "claim_clarification_question": "I'm not sure exactly what position you are defending. Can you state in one precise sentence what you want this motion to mean in practice, and what someone on the other side would disagree with?",
     "evidence_demanding_challenge": "You say \"{claim}\", but what specific evidence supports that? Name an example, a study or a source, and tell me why it should convince someone who disagrees.",
@@ -82,34 +72,65 @@ REASONS = {
 }
 
 
-# ------------------------------------------------- normalisation (shared by both runners)
-def normalise_analysis(out, topic, argument):
-    out = dict(out or {})
+# normalisation - bcz LLMs can return incomplete or inconsistent JSON.
+def _as_dict(raw):
+    """A model sometimes wraps its answer in a list: take the first dict inside it, else an empty dict."""
+    if isinstance(raw, list):
+        raw = next((x for x in raw if isinstance(x, dict)), {})
+    return dict(raw) if isinstance(raw, dict) else {}
+
+
+def _scores_as_dict(raw):
+    """Accept the shapes models really return for the seven scores: {dim: {...}}, {"scores"/"dimensions": {...}},
+    a list of {"dimension": name, "score": n} items, or a plain list of seven items in rubric order."""
+    if isinstance(raw, dict):
+        for wrap in ("scores", "dimensions"):
+            if isinstance(raw.get(wrap), (dict, list)) and not any(d in raw for d in DIMENSIONS):
+                return _scores_as_dict(raw[wrap])
+        return raw
+    if isinstance(raw, list):
+        out = {}
+        named = [x for x in raw if isinstance(x, dict) and (x.get("dimension") or x.get("name"))]
+        for x in named:
+            out[str(x.get("dimension") or x.get("name")).strip().lower().replace(" ", "_")] = x
+        if out:
+            return out
+        if len(raw) == len(DIMENSIONS):
+            return dict(zip(DIMENSIONS, raw))
+    return {}
+
+
+def normalise_analysis(out, topic, argument): #Raw output from Arg Analyzer.
+    out = _as_dict(out)
     out.setdefault("main_claim", argument)
     out["grounds"] = out.get("grounds") or []
     if isinstance(out["grounds"], str):
         out["grounds"] = [out["grounds"]]
     for k in ("warrant", "backing", "qualifier", "rebuttal"):
         out.setdefault(k, None)
-    out["missing_components"] = [k for k in ("grounds", "warrant", "backing", "qualifier", "rebuttal")
+    out["missing_components"] = [k for k in ("grounds", "warrant", "backing", "qualifier", "rebuttal") #Because the system does not blindly trust the LLM's original missing_components list. It recalculates it from the actual extracted fields.
                                  if not out.get(k)]
     out.setdefault("stance_matches_side", None)   # feeds the side consistency check (Table 3.9)
     return out
 
 
 def normalise_scores(raw):
-    """Clamp every dimension to 1..5; a missing score becomes 3 (thesis 6.2.3); overall = mean / 7."""
-    raw = raw or {}
+    """Clamp every dimension to 1..5; a missing score becomes 3; overall = mean / 7."""
+    raw = _scores_as_dict(raw)
     dims = {}
     for d in DIMENSIONS:
-        item = raw.get(d) or {}
+        item = raw.get(d) or {} #Get the score for current dimension.If missing use an empty dictionary.
         if not isinstance(item, dict):
             item = {"score": item}
+        missing = "score" not in item
         try:
             s = int(round(float(item.get("score", DEFAULT_SCORE))))
         except (TypeError, ValueError):
-            s = DEFAULT_SCORE
-        dims[d] = {"score": max(SCORE_MIN, min(SCORE_MAX, s)), "explanation": str(item.get("explanation", ""))}
+            s, missing = DEFAULT_SCORE, True
+        expl = str(item.get("explanation", ""))
+        if missing:
+            expl = "[no valid LLM score, default 3 applied] " + expl
+        dims[d] = {"score": max(SCORE_MIN, min(SCORE_MAX, s)), "explanation": expl}
     overall = round(sum(v["score"] for v in dims.values()) / len(DIMENSIONS), 2)
     return {"dimensions": dims, "overall_quality": overall}
 
@@ -139,21 +160,45 @@ def resolve_diagnosis(scores, argument, analysis, proposal=None):
             "recommended_intervention": INTERVENTION_MAP[weakness]}
 
 
-_SCORE_LEAK = re.compile(r"\b\d(\.\d+)?\s*/\s*5\b|\bscore[sd]?\b|\brubric\b", re.I)
+# Thesis 3.7.3 / NFR08: the opponent must not reveal rubric scores. The pattern targets real leaks only (numbers like "3/5",
+# "your score", "overall score", the rubric, the dimension names). The bare word "score" is NOT flagged, because a motion such as
+# "Standardised testing ..." legitimately needs "test scores" and every such reply would otherwise be replaced by a canned one.
+_SCORE_LEAK = re.compile(r"\b\d(\.\d+)?\s*(/|out of)\s*5\b|\b(your|my|overall|argument|quality)\s+scores?\b"
+                         r"|\byou\s+scored\b|\bscored\s+you\b|\brubric\b"
+                         r"|\b(claim_clarity|evidence_quality|warrant_strength|rebuttal_readiness|logical_validity)\b", re.I)
+# Thesis 3.7.3 / NFR08: the opponent must not write the student's argument for them (also stated in the prompt).
+_WRITES_FOR_STUDENT = re.compile(r"\b(here is|here's)\s+(a|an|your)\s+(better|stronger|improved|revised|rewritten)\b"
+                                 r"|\byou (could|might|should) (say|write|argue)\s*[:,\"“]|\btry (saying|writing)\b", re.I)
 
 
 def guard_reply(text, intervention, topic, side, argument, analysis):
-    """Guardrails from thesis 3.7.3 and NFR08: no score leakage, must challenge, not too long."""
+    """Guardrails: no score leakage and no writing the student's argument (thesis 3.7.3, NFR08). Also an implementation choice:
+    the reply must challenge (contain a question unless it is a counterargument) and be short (at most 120 words)."""
     fallback = FALLBACK[intervention["type"]].format(
         claim=(analysis.get("main_claim") or argument).rstrip(".!?"), topic=topic, side=side)
-    if (not text or _SCORE_LEAK.search(text) or ("?" not in text and intervention["type"] != "counterargument_presentation")
+    if (not isinstance(text, str) or not text.strip() or _SCORE_LEAK.search(text) or _WRITES_FOR_STUDENT.search(text)
+            or ("?" not in text and intervention["type"] != "counterargument_presentation")
             or len(text.split()) > 120):
         return fallback, True
     return text.strip(), False
 
 
-# ---------------------------------------------------------------- plain agents
-def analyse(llm, topic, side, history, argument):
+def fmt_convo(convo):
+    """Conversation history as readable text for the opponent prompt (thesis 3.11.5).
+    convo = [{"student": str, "opponent": str|None}, ...] oldest first (see Database.conversation)."""
+    if not convo:
+        return "(this is the first turn)"
+    lines = []
+    for t in convo:
+        lines.append(f"Student: {t.get('student')}")
+        if t.get("opponent"):
+            lines.append(f"Opponent: {t['opponent']}")
+    return "\n".join(lines)
+
+
+# agents
+# Agent 1 — Argument Analyzer
+def analyse(llm, topic, side, history, argument): #llm=llm interface
     out = llm.json("analyse", ANALYSE_PROMPT.format(topic=topic, side=side, history=history[-3:],
                                                     argument=argument), {"argument": argument, "topic": topic})
     return normalise_analysis(out, topic, argument)
@@ -190,8 +235,8 @@ def strategise(diagnosis, previous_weakness=None, repeat_count=0):
     return {"type": itype, "description": desc}
 
 
-def oppose(llm, topic, side, argument, analysis, diagnosis, intervention):
-    prompt = OPPONENT_PROMPT.format(topic=topic, side=side, argument=argument,
+def oppose(llm, topic, side, argument, analysis, diagnosis, intervention, convo=None):
+    prompt = OPPONENT_PROMPT.format(topic=topic, side=side, argument=argument, history=fmt_convo(convo),
                                     weakness=diagnosis["lowest_weakness"], reason=diagnosis["diagnosis_reason"],
                                     instruction=intervention["description"])
     try:
@@ -211,26 +256,26 @@ def feedback(scores, diagnosis):
 
 
 def track(current_scores, current_diag, previous):
-    """Progress between turns. Improvement is measured on the targeted dimension (diagnosed last turn)."""
+    """Progress between turns.
+
+    Thesis 6.2.7 fields: previous_score, current_score, score_change, improvement
+    (improvement = score went up AND the diagnosed weakness changed).
+    Extra fields: improvement is also measured on the targeted dimension (diagnosed last turn)."""
     if not previous:
-        return {"score_change": None, "targeted_dimension": None, "targeted_before": None,
+        return {"previous_score": None, "current_score": current_scores["overall_quality"],
+                "score_change": None, "improvement": None,
+                "targeted_dimension": None, "targeted_before": None,
                 "targeted_after": None, "targeted_improved": None, "weakness_changed": None,
                 "previous_overall": None}
-    tdim = WEAKNESS_TO_DIMENSION[previous["weakness"]]
-    before, after = previous["scores"].get(tdim), current_scores["dimensions"][tdim]["score"]
-    return {"previous_overall": previous["overall_score"], "previous_weakness": previous["weakness"],
+    tdim = WEAKNESS_TO_DIMENSION.get(previous.get("weakness"))
+    before = (previous.get("scores") or {}).get(tdim) if tdim else None
+    after = current_scores["dimensions"][tdim]["score"] if tdim else None
+    changed = previous["weakness"] != current_diag["lowest_weakness"]
+    change = round(current_scores["overall_quality"] - previous["overall_score"], 2)
+    return {"previous_score": previous["overall_score"], "current_score": current_scores["overall_quality"],
+            "score_change": change, "improvement": bool(change > 0 and changed),
+            "previous_overall": previous["overall_score"], "previous_weakness": previous["weakness"],
             "current_weakness": current_diag["lowest_weakness"],
-            "score_change": round(current_scores["overall_quality"] - previous["overall_score"], 2),
             "targeted_dimension": tdim, "targeted_before": before, "targeted_after": after,
-            "targeted_improved": None if before is None else after > before,
-            "weakness_changed": previous["weakness"] != current_diag["lowest_weakness"]}
-
-
-def single_prompt_baseline(llm, topic, side, argument):
-    """Baseline B2: ONE un decomposed LLM call does feedback + opponent reply."""
-    try:
-        out = llm.json("single", SINGLE_PROMPT.format(topic=topic, side=side, argument=argument), {}) or {}
-    except Exception:
-        out = {}
-    return (out.get("feedback") or "Consider strengthening your argument."), \
-           (out.get("ai_opponent_response") or "I disagree. Can you elaborate?")
+            "targeted_improved": None if before is None or after is None else after > before,
+            "weakness_changed": changed}

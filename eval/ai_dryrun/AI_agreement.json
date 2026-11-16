@@ -1,0 +1,41 @@
+{
+  "n": 45,
+  "n_labellers": 8,
+  "labellers": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G",
+    "H"
+  ],
+  "raw_agreement": 0.8619047619047623,
+  "kappa": 0.8429881449215404,
+  "fleiss_kappa": 0.8428034390511995,
+  "items_without_majority": 0,
+  "kind": "AI-ANNOTATOR DRY RUN, NOT HUMAN",
+  "items_in_reference": 45,
+  "label_distribution": {
+    "overgeneralisation": 7,
+    "insufficient_evidence": 7,
+    "missing_warrant": 6,
+    "irrelevant_evidence": 5,
+    "poor_relevance": 5,
+    "unclear_claim": 5,
+    "logical_fallacy": 4,
+    "missing_qualification": 3,
+    "weak_rebuttal": 3
+  },
+  "source_files": [
+    "AI_Assessment_Coach_A.xlsx",
+    "AI_Assessment_Coach_B.xlsx",
+    "AI_Assessment_Coach_C.xlsx",
+    "Coach_D_AI_Assessment.xlsx",
+    "Coach_E_AI_Assessment.xlsx",
+    "Coach_F_AI_Assessment.xlsx",
+    "Coach_G_AI_assessed.xlsx",
+    "Coach_H_AI_assessed.xlsx"
+  ]
+}

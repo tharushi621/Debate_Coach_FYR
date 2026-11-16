@@ -1,0 +1,1129 @@
+{
+  "date": "2026-11-16",
+  "model": "openai/gpt-oss-20b",
+  "backend": "openai",
+  "prompt_hash": "625114951b1a",
+  "llm_diagnosis_accepted": 38,
+  "rule_fallback_used": 1,
+  "n_predicted": 39,
+  "mean_seconds_per_item": 12.7,
+  "results": {
+    "strict_majority": {
+      "n_items": 27,
+      "n_labellers": 8,
+      "test": {
+        "thesis_system": {
+          "n": 21,
+          "correct": 12,
+          "accuracy": 0.5714285714285714,
+          "ci95": [
+            0.3654621629703244,
+            0.7553030051347894
+          ],
+          "kappa": 0.4946524064171123
+        },
+        "single_prompt_llm": {
+          "n": 21,
+          "correct": 16,
+          "accuracy": 0.7619047619047619,
+          "ci95": [
+            0.5490841802765406,
+            0.8937214361088773
+          ],
+          "kappa": 0.7115384615384615
+        },
+        "majority_class": {
+          "n": 21,
+          "correct": 4,
+          "accuracy": 0.19047619047619047,
+          "ci95": [
+            0.07667440615177301,
+            0.40000986539273287
+          ],
+          "kappa": 0.0
+        },
+        "system_vs_single_prompt": {
+          "only_system_correct": 3,
+          "only_single_prompt_correct": 7,
+          "mcnemar_exact_p": 0.34375
+        },
+        "per_class": {
+          "insufficient_evidence": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 0.0
+          },
+          "irrelevant_evidence": {
+            "precision": 0.6666666666666666,
+            "recall": 0.5,
+            "f1-score": 0.5714285714285714,
+            "support": 4.0
+          },
+          "logical_fallacy": {
+            "precision": 0.6666666666666666,
+            "recall": 0.6666666666666666,
+            "f1-score": 0.6666666666666666,
+            "support": 3.0
+          },
+          "missing_warrant": {
+            "precision": 0.2,
+            "recall": 0.5,
+            "f1-score": 0.2857142857142857,
+            "support": 2.0
+          },
+          "overgeneralisation": {
+            "precision": 1.0,
+            "recall": 0.75,
+            "f1-score": 0.8571428571428571,
+            "support": 4.0
+          },
+          "poor_relevance": {
+            "precision": 1.0,
+            "recall": 0.25,
+            "f1-score": 0.4,
+            "support": 4.0
+          },
+          "unclear_claim": {
+            "precision": 0.6,
+            "recall": 0.75,
+            "f1-score": 0.6666666666666666,
+            "support": 4.0
+          },
+          "accuracy": 0.5714285714285714,
+          "macro avg": {
+            "precision": 0.5904761904761904,
+            "recall": 0.4880952380952381,
+            "f1-score": 0.49251700680272104,
+            "support": 21.0
+          },
+          "weighted avg": {
+            "precision": 0.7365079365079366,
+            "recall": 0.5714285714285714,
+            "f1-score": 0.5977324263038548,
+            "support": 21.0
+          }
+        },
+        "confusion_labels": [
+          "insufficient_evidence",
+          "irrelevant_evidence",
+          "logical_fallacy",
+          "missing_warrant",
+          "overgeneralisation",
+          "poor_relevance",
+          "unclear_claim"
+        ],
+        "confusion": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            2,
+            0,
+            0,
+            0,
+            0,
+            2
+          ],
+          [
+            0,
+            0,
+            2,
+            1,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            1,
+            0,
+            3,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            2,
+            0,
+            1,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            3
+          ]
+        ]
+      },
+      "dev": {
+        "thesis_system": {
+          "n": 6,
+          "correct": 3,
+          "accuracy": 0.5,
+          "ci95": [
+            0.18761280689940868,
+            0.8123871931005913
+          ],
+          "kappa": 0.4193548387096774
+        },
+        "single_prompt_llm": {
+          "n": 6,
+          "correct": 4,
+          "accuracy": 0.6666666666666666,
+          "ci95": [
+            0.29998832134152864,
+            0.9032306674407831
+          ],
+          "kappa": 0.6000000000000001
+        },
+        "majority_class": {
+          "n": 6,
+          "correct": 1,
+          "accuracy": 0.16666666666666666,
+          "ci95": [
+            0.03005258587173032,
+            0.563509436563646
+          ],
+          "kappa": 0.0
+        },
+        "system_vs_single_prompt": {
+          "only_system_correct": 0,
+          "only_single_prompt_correct": 1,
+          "mcnemar_exact_p": 1.0
+        },
+        "per_class": {
+          "insufficient_evidence": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 1.0
+          },
+          "irrelevant_evidence": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1-score": 1.0,
+            "support": 1.0
+          },
+          "logical_fallacy": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 1.0
+          },
+          "missing_warrant": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 0.0
+          },
+          "overgeneralisation": {
+            "precision": 0.5,
+            "recall": 1.0,
+            "f1-score": 0.6666666666666666,
+            "support": 1.0
+          },
+          "poor_relevance": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 1.0
+          },
+          "unclear_claim": {
+            "precision": 0.5,
+            "recall": 1.0,
+            "f1-score": 0.6666666666666666,
+            "support": 1.0
+          },
+          "accuracy": 0.5,
+          "macro avg": {
+            "precision": 0.2857142857142857,
+            "recall": 0.42857142857142855,
+            "f1-score": 0.3333333333333333,
+            "support": 6.0
+          },
+          "weighted avg": {
+            "precision": 0.3333333333333333,
+            "recall": 0.5,
+            "f1-score": 0.38888888888888884,
+            "support": 6.0
+          }
+        },
+        "confusion_labels": [
+          "insufficient_evidence",
+          "irrelevant_evidence",
+          "logical_fallacy",
+          "missing_warrant",
+          "overgeneralisation",
+          "poor_relevance",
+          "unclear_claim"
+        ],
+        "confusion": [
+          [
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ]
+        ]
+      },
+      "all": {
+        "thesis_system": {
+          "n": 27,
+          "correct": 15,
+          "accuracy": 0.5555555555555556,
+          "ci95": [
+            0.37312719479576884,
+            0.7241440232992717
+          ],
+          "kappa": 0.47657512116316636
+        },
+        "single_prompt_llm": {
+          "n": 27,
+          "correct": 20,
+          "accuracy": 0.7407407407407407,
+          "ci95": [
+            0.553210695973843,
+            0.8682979157713322
+          ],
+          "kappa": 0.6881188118811881
+        },
+        "majority_class": {
+          "n": 27,
+          "correct": 5,
+          "accuracy": 0.18518518518518517,
+          "ci95": [
+            0.0818058657428532,
+            0.36699056505191746
+          ],
+          "kappa": 0.0
+        },
+        "system_vs_single_prompt": {
+          "only_system_correct": 3,
+          "only_single_prompt_correct": 8,
+          "mcnemar_exact_p": 0.2265625
+        },
+        "per_class": {
+          "insufficient_evidence": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 1.0
+          },
+          "irrelevant_evidence": {
+            "precision": 0.75,
+            "recall": 0.6,
+            "f1-score": 0.6666666666666666,
+            "support": 5.0
+          },
+          "logical_fallacy": {
+            "precision": 0.6666666666666666,
+            "recall": 0.5,
+            "f1-score": 0.5714285714285714,
+            "support": 4.0
+          },
+          "missing_warrant": {
+            "precision": 0.16666666666666666,
+            "recall": 0.5,
+            "f1-score": 0.25,
+            "support": 2.0
+          },
+          "overgeneralisation": {
+            "precision": 0.8,
+            "recall": 0.8,
+            "f1-score": 0.8,
+            "support": 5.0
+          },
+          "poor_relevance": {
+            "precision": 1.0,
+            "recall": 0.2,
+            "f1-score": 0.3333333333333333,
+            "support": 5.0
+          },
+          "unclear_claim": {
+            "precision": 0.5714285714285714,
+            "recall": 0.8,
+            "f1-score": 0.6666666666666666,
+            "support": 5.0
+          },
+          "accuracy": 0.5555555555555556,
+          "macro avg": {
+            "precision": 0.5649659863945579,
+            "recall": 0.48571428571428577,
+            "f1-score": 0.4697278911564626,
+            "support": 27.0
+          },
+          "weighted avg": {
+            "precision": 0.6891534391534392,
+            "recall": 0.5555555555555556,
+            "f1-score": 0.5599647266313932,
+            "support": 27.0
+          }
+        },
+        "confusion_labels": [
+          "insufficient_evidence",
+          "irrelevant_evidence",
+          "logical_fallacy",
+          "missing_warrant",
+          "overgeneralisation",
+          "poor_relevance",
+          "unclear_claim"
+        ],
+        "confusion": [
+          [
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            3,
+            0,
+            0,
+            0,
+            0,
+            2
+          ],
+          [
+            0,
+            0,
+            2,
+            1,
+            1,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            1,
+            0,
+            4,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            2,
+            0,
+            1,
+            1
+          ],
+          [
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            4
+          ]
+        ]
+      }
+    },
+    "plurality": {
+      "n_items": 39,
+      "n_labellers": 8,
+      "test": {
+        "thesis_system": {
+          "n": 32,
+          "correct": 16,
+          "accuracy": 0.5,
+          "ci95": [
+            0.33630614316859386,
+            0.6636938568314061
+          ],
+          "kappa": 0.43047830923248054
+        },
+        "single_prompt_llm": {
+          "n": 32,
+          "correct": 21,
+          "accuracy": 0.65625,
+          "ci95": [
+            0.4831077350878594,
+            0.7958976664567146
+          ],
+          "kappa": 0.6075808249721293
+        },
+        "majority_class": {
+          "n": 32,
+          "correct": 5,
+          "accuracy": 0.15625,
+          "ci95": [
+            0.06864319106627216,
+            0.31754492553566527
+          ],
+          "kappa": 0.0
+        },
+        "system_vs_single_prompt": {
+          "only_system_correct": 4,
+          "only_single_prompt_correct": 9,
+          "mcnemar_exact_p": 0.266845703125
+        },
+        "per_class": {
+          "insufficient_evidence": {
+            "precision": 0.3333333333333333,
+            "recall": 0.5,
+            "f1-score": 0.4,
+            "support": 2.0
+          },
+          "irrelevant_evidence": {
+            "precision": 0.6666666666666666,
+            "recall": 0.5,
+            "f1-score": 0.5714285714285714,
+            "support": 4.0
+          },
+          "logical_fallacy": {
+            "precision": 0.6666666666666666,
+            "recall": 0.6666666666666666,
+            "f1-score": 0.6666666666666666,
+            "support": 3.0
+          },
+          "missing_qualification": {
+            "precision": 0.5,
+            "recall": 0.25,
+            "f1-score": 0.3333333333333333,
+            "support": 4.0
+          },
+          "missing_warrant": {
+            "precision": 0.3,
+            "recall": 0.75,
+            "f1-score": 0.42857142857142855,
+            "support": 4.0
+          },
+          "overgeneralisation": {
+            "precision": 0.75,
+            "recall": 0.6,
+            "f1-score": 0.6666666666666666,
+            "support": 5.0
+          },
+          "poor_relevance": {
+            "precision": 1.0,
+            "recall": 0.25,
+            "f1-score": 0.4,
+            "support": 4.0
+          },
+          "unclear_claim": {
+            "precision": 0.6,
+            "recall": 0.6,
+            "f1-score": 0.6,
+            "support": 5.0
+          },
+          "weak_rebuttal": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 1.0
+          },
+          "accuracy": 0.5,
+          "macro avg": {
+            "precision": 0.5351851851851852,
+            "recall": 0.4574074074074075,
+            "f1-score": 0.45185185185185184,
+            "support": 32.0
+          },
+          "weighted avg": {
+            "precision": 0.6026041666666666,
+            "recall": 0.5,
+            "f1-score": 0.5020833333333333,
+            "support": 32.0
+          }
+        },
+        "confusion_labels": [
+          "insufficient_evidence",
+          "irrelevant_evidence",
+          "logical_fallacy",
+          "missing_qualification",
+          "missing_warrant",
+          "overgeneralisation",
+          "poor_relevance",
+          "unclear_claim",
+          "weak_rebuttal"
+        ],
+        "confusion": [
+          [
+            1,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2,
+            0
+          ],
+          [
+            0,
+            0,
+            2,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            1,
+            2,
+            0,
+            0,
+            0,
+            1
+          ],
+          [
+            1,
+            0,
+            0,
+            0,
+            3,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            1,
+            0,
+            1,
+            3,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0,
+            2,
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            3,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0
+          ]
+        ]
+      },
+      "dev": {
+        "thesis_system": {
+          "n": 7,
+          "correct": 3,
+          "accuracy": 0.42857142857142855,
+          "ci95": [
+            0.15821692226262685,
+            0.7495457695909742
+          ],
+          "kappa": 0.34883720930232553
+        },
+        "single_prompt_llm": {
+          "n": 7,
+          "correct": 4,
+          "accuracy": 0.5714285714285714,
+          "ci95": [
+            0.2504542304090258,
+            0.8417830777373732
+          ],
+          "kappa": 0.5
+        },
+        "majority_class": {
+          "n": 7,
+          "correct": 2,
+          "accuracy": 0.2857142857142857,
+          "ci95": [
+            0.0822171657090155,
+            0.6410709098517873
+          ],
+          "kappa": 0.0
+        },
+        "system_vs_single_prompt": {
+          "only_system_correct": 0,
+          "only_single_prompt_correct": 1,
+          "mcnemar_exact_p": 1.0
+        },
+        "per_class": {
+          "insufficient_evidence": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 1.0
+          },
+          "irrelevant_evidence": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1-score": 1.0,
+            "support": 1.0
+          },
+          "logical_fallacy": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 2.0
+          },
+          "missing_warrant": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 0.0
+          },
+          "overgeneralisation": {
+            "precision": 0.5,
+            "recall": 1.0,
+            "f1-score": 0.6666666666666666,
+            "support": 1.0
+          },
+          "poor_relevance": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 1.0
+          },
+          "unclear_claim": {
+            "precision": 0.5,
+            "recall": 1.0,
+            "f1-score": 0.6666666666666666,
+            "support": 1.0
+          },
+          "accuracy": 0.42857142857142855,
+          "macro avg": {
+            "precision": 0.2857142857142857,
+            "recall": 0.42857142857142855,
+            "f1-score": 0.3333333333333333,
+            "support": 7.0
+          },
+          "weighted avg": {
+            "precision": 0.2857142857142857,
+            "recall": 0.42857142857142855,
+            "f1-score": 0.3333333333333333,
+            "support": 7.0
+          }
+        },
+        "confusion_labels": [
+          "insufficient_evidence",
+          "irrelevant_evidence",
+          "logical_fallacy",
+          "missing_warrant",
+          "overgeneralisation",
+          "poor_relevance",
+          "unclear_claim"
+        ],
+        "confusion": [
+          [
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ]
+        ]
+      },
+      "all": {
+        "thesis_system": {
+          "n": 39,
+          "correct": 19,
+          "accuracy": 0.48717948717948717,
+          "ci95": [
+            0.3386492878313309,
+            0.6380089135430342
+          ],
+          "kappa": 0.4170403587443946
+        },
+        "single_prompt_llm": {
+          "n": 39,
+          "correct": 25,
+          "accuracy": 0.6410256410256411,
+          "ci95": [
+            0.484178631846895,
+            0.772581153035089
+          ],
+          "kappa": 0.5897821187077386
+        },
+        "majority_class": {
+          "n": 39,
+          "correct": 6,
+          "accuracy": 0.15384615384615385,
+          "ci95": [
+            0.07247373845051469,
+            0.2972976986573431
+          ],
+          "kappa": 0.0
+        },
+        "system_vs_single_prompt": {
+          "only_system_correct": 4,
+          "only_single_prompt_correct": 10,
+          "mcnemar_exact_p": 0.1795654296875
+        },
+        "per_class": {
+          "insufficient_evidence": {
+            "precision": 0.25,
+            "recall": 0.3333333333333333,
+            "f1-score": 0.2857142857142857,
+            "support": 3.0
+          },
+          "irrelevant_evidence": {
+            "precision": 0.75,
+            "recall": 0.6,
+            "f1-score": 0.6666666666666666,
+            "support": 5.0
+          },
+          "logical_fallacy": {
+            "precision": 0.6666666666666666,
+            "recall": 0.4,
+            "f1-score": 0.5,
+            "support": 5.0
+          },
+          "missing_qualification": {
+            "precision": 0.5,
+            "recall": 0.25,
+            "f1-score": 0.3333333333333333,
+            "support": 4.0
+          },
+          "missing_warrant": {
+            "precision": 0.2727272727272727,
+            "recall": 0.75,
+            "f1-score": 0.4,
+            "support": 4.0
+          },
+          "overgeneralisation": {
+            "precision": 0.6666666666666666,
+            "recall": 0.6666666666666666,
+            "f1-score": 0.6666666666666666,
+            "support": 6.0
+          },
+          "poor_relevance": {
+            "precision": 1.0,
+            "recall": 0.2,
+            "f1-score": 0.3333333333333333,
+            "support": 5.0
+          },
+          "unclear_claim": {
+            "precision": 0.5714285714285714,
+            "recall": 0.6666666666666666,
+            "f1-score": 0.6153846153846154,
+            "support": 6.0
+          },
+          "weak_rebuttal": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 1.0
+          },
+          "accuracy": 0.48717948717948717,
+          "macro avg": {
+            "precision": 0.5197210197210196,
+            "recall": 0.42962962962962964,
+            "f1-score": 0.42234432234432234,
+            "support": 39.0
+          },
+          "weighted avg": {
+            "precision": 0.5987900987900988,
+            "recall": 0.48717948717948717,
+            "f1-score": 0.4867380482765098,
+            "support": 39.0
+          }
+        },
+        "confusion_labels": [
+          "insufficient_evidence",
+          "irrelevant_evidence",
+          "logical_fallacy",
+          "missing_qualification",
+          "missing_warrant",
+          "overgeneralisation",
+          "poor_relevance",
+          "unclear_claim",
+          "weak_rebuttal"
+        ],
+        "confusion": [
+          [
+            1,
+            0,
+            0,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2,
+            0
+          ],
+          [
+            1,
+            0,
+            2,
+            0,
+            1,
+            1,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            1,
+            2,
+            0,
+            0,
+            0,
+            1
+          ],
+          [
+            1,
+            0,
+            0,
+            0,
+            3,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            1,
+            0,
+            1,
+            4,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0,
+            2,
+            0,
+            1,
+            1,
+            0
+          ],
+          [
+            1,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            4,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0
+          ]
+        ]
+      }
+    }
+  },
+  "test_split_runs_so_far": 1
+}

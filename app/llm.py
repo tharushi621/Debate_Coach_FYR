@@ -1,15 +1,13 @@
-"""LLM backends.
+"""LLM backends (real models only).
 
-OllamaLLM        real local model (Llama 3 8B), the thesis setup.
-OpenAICompatLLM  any OpenAI compatible chat API (optional).
-HeuristicLLM     deterministic rule based stand in. Used ONLY by unit tests and as
-                 the "rule based baseline" in the diagnostic evaluation. make_llm()
-                 never returns it, so a typo in LLM_BACKEND can no longer silently
-                 give you mock scores.
+OllamaLLM        real local model (Llama 3 8B), the thesis setup (Chapter 7, Section 7.3).
+OpenAICompatLLM  any OpenAI compatible chat API (thesis 6.16, optional).
 
-Speed notes (why a turn is faster than before):
-  * every task has an output token cap (TASK_TOKENS), so the model stops as soon as
-    the JSON is finished instead of writing long explanations;
+There is no mock or heuristic stand in. make_llm() raises on an unknown LLM_BACKEND, so a typo can
+never silently produce fake scores.
+
+Speed notes:
+  * every task has an output token cap (TASK_TOKENS), so the model stops as soon as the JSON is finished;
   * the prompts ask for short explanations;
   * keep_alive keeps the model in memory between turns;
   * the API warms the model up once at start up (see app/api.py).
@@ -22,10 +20,8 @@ import time
 
 import requests
 
-from .taxonomy import DIMENSIONS
-
 # Maximum new tokens per task. Override with env, for example LLM_TOKENS_SCORE=700.
-TASK_TOKENS = {"analyse": 380, "score": 520, "diagnose": 140, "oppose": 200, "single": 300}
+TASK_TOKENS = {"analyse": 260, "score": 360, "diagnose": 90, "oppose": 150, "warm": 16}
 
 
 def _cap(task):
@@ -55,7 +51,7 @@ def _flatten(messages):
 
 
 class OllamaLLM:
-    """Local Llama 3 8B through Ollama (thesis setup: temperature 0, seed 7, JSON mode).
+    """Local Llama 3 8B through Ollama (temperature 0, seed 7, JSON mode).
 
     Env: OLLAMA_MODEL (llama3:8b), OLLAMA_URL, OLLAMA_TIMEOUT (300 s per call),
     OLLAMA_KEEP_ALIVE (30m), OLLAMA_NUM_CTX (4096), LLM_VERBOSE=1 prints call times.
@@ -95,7 +91,7 @@ class OllamaLLM:
         """Load the model into memory once (the first call is the slowest)."""
         t = time.time()
         self._chat([{"role": "user", "content": "Reply with the single word: ready"}], json_mode=False,
-                   task="single")
+                   task="warm")
         return time.time() - t
 
     def complete(self, messages, task=None):
@@ -103,6 +99,7 @@ class OllamaLLM:
         return self._chat(messages, True, task)
 
     def json(self, task, prompt, payload=None, retries=2):
+        """`payload` is accepted for call compatibility and ignored: the real model reads only the prompt."""
         last = None
         for _ in range(retries + 1):
             t = time.time()
@@ -121,7 +118,8 @@ class OllamaLLM:
 
 
 class OpenAICompatLLM:
-    """Any OpenAI compatible chat API. Env: LLM_API_KEY, LLM_BASE_URL (default Groq), LLM_MODEL."""
+    """Any OpenAI compatible chat API. Env: LLM_API_KEY, LLM_BASE_URL (default Groq), LLM_MODEL (for example openai/gpt-oss-20b),
+    LLM_REASONING_EFFORT (low), LLM_REASONING_TOKENS (extra tokens for reasoning models, 700)."""
     name = "openai-compatible"
 
     def __init__(self, api_key=None, base_url=None, model=None, timeout=60):
@@ -135,22 +133,43 @@ class OpenAICompatLLM:
             raise RuntimeError("LLM_MODEL is not set: copy a current model id from your provider's page")
 
     def _post(self, messages, task=None, retries=3):
-        last = None
-        for i in range(retries + 1):
+        """One chat call. Ordinary errors are retried `retries` times. A rate limit (HTTP 429) does NOT use up those attempts:
+        wait for the time the server asks for (Retry-After, at most 90 s) and try again, up to LLM_RATE_RETRIES times (8)."""
+        last, i, rate_waits = None, 0, 0
+        max_rate = int(os.getenv("LLM_RATE_RETRIES", "8"))
+        while i <= retries:
             try:
                 body = {"model": self.model, "temperature": 0, "seed": 7,
                         "response_format": {"type": "json_object"}, "messages": _flatten(messages)}
+                reasoning = "gpt-oss" in (self.model or "").lower()
+                if reasoning:       # reasoning models spend tokens thinking: keep that short and leave room for the JSON
+                    body["reasoning_effort"] = os.getenv("LLM_REASONING_EFFORT", "low")
                 if task:
-                    body["max_tokens"] = _cap(task)
+                    body["max_tokens"] = _cap(task) + (int(os.getenv("LLM_REASONING_TOKENS", "700")) if reasoning else 0)
                 r = requests.post(f"{self.base}/chat/completions", timeout=self.timeout,
                                   headers={"Authorization": f"Bearer {self.key}"}, json=body)
-                if r.status_code == 429:         # free tier rate limit: back off and retry
-                    time.sleep(2 * (i + 1))
+                if r.status_code == 429:
+                    rate_waits += 1
+                    try:
+                        asked = float(r.headers.get("retry-after") or 0)
+                    except ValueError:
+                        asked = 0.0
+                    wait = min(90.0, max(asked, 5.0 * rate_waits))
+                    last = f"rate limited by the provider (HTTP 429): {r.text[:160]}"
+                    if rate_waits > max_rate:
+                        raise RuntimeError(f"LLM rate limit not lifting after {max_rate} waits. {last}")
+                    print(f"[llm] rate limited, waiting {wait:.0f}s ({rate_waits}/{max_rate})", file=sys.stderr, flush=True)
+                    time.sleep(wait)
                     continue
                 r.raise_for_status()
                 return r.json()["choices"][0]["message"]["content"]
+            except RuntimeError as e:
+                if "rate limit not lifting" in str(e):
+                    raise
+                last = e
             except Exception as e:
                 last = e
+            i += 1
         raise RuntimeError(f"LLM request failed: {last}")
 
     def complete(self, messages, task=None):
@@ -173,75 +192,16 @@ def make_llm():
         return OllamaLLM(os.getenv("OLLAMA_MODEL", "llama3:8b"))
     if backend == "openai":
         return OpenAICompatLLM()
-    raise RuntimeError(f"Unknown LLM_BACKEND '{backend}'. Use 'ollama' or 'openai'. "
-                       "(The rule based stand in is for unit tests only and is never selected here.)")
+    raise RuntimeError(f"Unknown LLM_BACKEND '{backend}'. Use 'ollama' or 'openai'.")
 
 
 # --------------------------------------------------------------------------
-# Rule based stand in: unit tests and the evaluation baseline ONLY.
+# Lexical helpers (word lists, not data). Used by agents.py (_ABS: absolute words for the
+# overgeneralisation check) and validation.py (_toks: topic overlap for the relevance flag).
 # --------------------------------------------------------------------------
-_EVID = re.compile(r"\b(study|studies|research|survey|according to|for example|for instance|e\.g\.|statistics|data|report|evidence shows|found that)\b|\d+\s?%|\b\d{2,}\b", re.I)
-_WARR = re.compile(r"\b(therefore|which means|this shows|this suggests|this is why|thus|as a result|because of this|this implies|so that|which is why)\b", re.I)
-_REBUT = re.compile(r"\b(however|although|critics|opponents|some argue|some may argue|while it is true|admittedly|on the other hand|one might object|proponents)\b", re.I)
-_QUAL = re.compile(r"\b(may|might|often|usually|in most cases|generally|in some cases|typically|likely|unless|except|tends? to|probably)\b", re.I)
 _ABS = re.compile(r"\b(all|every|everyone|everything|always|never|nobody|no one|completely|totally|entirely|obviously|undeniably)\b", re.I)
-_FALLACY = re.compile(r"\b(everyone knows|everybody|slippery slope|obviously|clearly everyone|only idiots|if we allow .* then .*)\b", re.I)
-_VAGUE = re.compile(r"\b(bad|good|wrong|terrible|awful|nice|stuff|things)\b", re.I)
 _STOP = set("the a an of to in and or is are be for on that this it as with by should would can will from at not".split())
 
 
 def _toks(s):
     return {w for w in re.findall(r"[a-z]{3,}", s.lower()) if w not in _STOP}
-
-
-class HeuristicLLM:
-    name = "heuristic"
-
-    def json(self, task, prompt, payload=None, retries=0):
-        return getattr(self, f"_{task}")(payload or {})
-
-    def _analyse(self, p):
-        text = p["argument"]
-        sents = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if s.strip()]
-        claim = sents[0] if sents else text
-        grounds = [s for s in sents if _EVID.search(s)] or ([s for s in sents[1:2]] if len(sents) > 1 else [])
-        m = re.search(r"\bbecause\b(.+)", text, re.I)
-        if m and not grounds:
-            grounds = [m.group(1).strip(" .")]
-        warrant = next((s for s in sents if _WARR.search(s)), None)
-        qualifier = next((s for s in sents if _QUAL.search(s)), None)
-        rebuttal = next((s for s in sents if _REBUT.search(s)), None)
-        out = {"main_claim": claim, "grounds": grounds, "warrant": warrant, "backing": None,
-               "qualifier": qualifier, "rebuttal": rebuttal}
-        out["missing_components"] = [k for k in ("grounds", "warrant", "backing", "qualifier", "rebuttal") if not out[k]]
-        return out
-
-    def _score(self, p):
-        text, topic, analysis = p["argument"], p["topic"], p["analysis"]
-        words = len(text.split())
-        ev = len(_EVID.findall(text))
-        d = {}
-        vague = bool(_VAGUE.search(analysis["main_claim"] or "")) and words < 12
-        d["claim_clarity"] = (1 if words < 5 else 2 if vague else 3 if words < 15 else 4)
-        d["evidence_quality"] = 1 if (not analysis["grounds"] and ev == 0) else min(5, 2 + ev) if ev else 2
-        d["warrant_strength"] = 4 if _WARR.search(text) and analysis["grounds"] else 2 if analysis["grounds"] else 1
-        overlap = len(_toks(text) & _toks(topic)) / max(1, len(_toks(topic)))
-        d["relevance"] = 1 if overlap < 0.1 else 2 if overlap < 0.25 else 3 if overlap < 0.45 else 5
-        d["rebuttal_readiness"] = min(5, 1 + 2 * len(_REBUT.findall(text)))
-        d["logical_validity"] = 1 if _FALLACY.search(text) else 3 if len(_ABS.findall(text)) > 1 else 4
-        absolutes, quals = len(_ABS.findall(text)), len(_QUAL.findall(text))
-        d["qualification"] = 1 if absolutes and not quals else min(5, 2 + quals) if quals else 2
-        return {k: {"score": v, "explanation": f"heuristic:{k}"} for k, v in d.items()}
-
-    def _diagnose(self, p):
-        return {"lowest_weakness": None}
-
-    def _oppose(self, p):
-        return {"ai_opponent_response": None}
-
-    def _single(self, p):
-        return {"feedback": "Your argument could be improved with more detail and better support.",
-                "ai_opponent_response": "I disagree with your position. Can you explain further and strengthen your case?"}
-
-
-assert set(DIMENSIONS)  # import sanity

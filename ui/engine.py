@@ -49,6 +49,14 @@ class DemoEngine:
     def start(self, topic, side, mode="adaptive", nickname=None):
         return {"topic": topic, "side": side, "mode": mode, "n": 0}
 
+    def end(self, h): pass
+
+    def topics(self): return []
+
+    def history(self, session_id): return []
+
+    def rate(self, h, ratings, comment=""): raise RuntimeError("Ratings are only stored with the thesis backend.")
+
     def turn(self, h, argument):
         low = argument.lower(); n = len(re.findall(r"\w+", argument)); h["n"] += 1
         has = lambda cues: any(c in low for c in cues)
@@ -124,7 +132,27 @@ class ApiEngine:
     def start(self, topic, side, mode="adaptive", nickname="learner"):
         d = self._post("/sessions", {"user_id": self._user(nickname), "topic": topic,
                                      "student_side": self.SIDE[side], "mode": mode})
-        return {"sid": d["session_id"], "topic": topic, "side": side, "mode": mode}
+        return {"sid": d["session_id"], "session_id": d["session_id"], "user_id": self._user(nickname),
+                "topic": topic, "side": side, "mode": mode}
+
+    def end(self, h):
+        """Mark the debate session as ended (thesis 4.11.1 end_session)."""
+        self._post("/sessions/%d/end" % h["sid"], {})
+
+    def topics(self):
+        r = self.requests.get(self.base + "/topics", timeout=30)
+        r.raise_for_status()
+        return r.json()
+
+    def history(self, session_id):
+        r = self.requests.get(f"{self.base}/sessions/{session_id}/history", timeout=30)
+        r.raise_for_status()
+        return r.json()
+
+    def rate(self, h, ratings, comment=""):
+        """Pilot questionnaire (thesis 7.9 / Table 7.25). ratings = 7 ints 1..5 in the order of analysis.pilot.ASPECTS."""
+        keys = ["ease_of_use", "clarity", "ai_relevance", "weakness_help", "improvement_help", "fairness", "reuse"]
+        self._post("/feedback", {"user_id": h["user_id"], "session_id": h["sid"], "comment": comment, **dict(zip(keys, ratings))})
 
     def turn(self, h, argument):
         d = self._post("/debate/turn", {"session_id": h["sid"], "argument": argument})
@@ -141,7 +169,9 @@ class ApiEngine:
                 "intervention": iv.get("type", ""), "opponent": d.get("ai_opponent_response", ""),
                 "feedback": d.get("feedback", ""), "display": d.get("display", "full"),
                 "mode": d.get("mode", h["mode"]), "guardrail_fallback": bool(d.get("guardrail_fallback")),
-                "flags": d.get("validation_flags") or [], "progress": d.get("progress") or {}}
+                "flags": d.get("validation_flags") or [], "progress": d.get("progress") or {}, "analysis": d.get("analysis") or {},
+                "reason": diag.get("diagnosis_reason", ""), "affected_component": diag.get("affected_component", ""), "disclaimer": d.get("disclaimer", ""),
+                "validation_flags": d.get("validation_flags") or []}
 
 
 def make_engine():

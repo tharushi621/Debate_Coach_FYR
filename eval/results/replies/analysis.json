@@ -1,0 +1,57 @@
+{
+  "rater_agreement_qwk": {
+    "targets": 0.8683440608543007,
+    "helpful": 0.6382978723404256
+  },
+  "mean_by_arm": {
+    "adaptive": {
+      "targets": 3.77,
+      "helpful": 3.62
+    },
+    "generic": {
+      "targets": 2.67,
+      "helpful": 2.38
+    },
+    "single_call": {
+      "targets": 4.05,
+      "helpful": 3.52
+    }
+  },
+  "ghostwriting_rate_by_arm": {
+    "adaptive": 0.0,
+    "generic": 0.0,
+    "single_call": 0.0
+  },
+  "targets: adaptive vs generic": {
+    "win": 18,
+    "tie": 4,
+    "loss": 8,
+    "mean_diff": 1.1,
+    "wilcoxon_p": 0.0012,
+    "n_items": 30
+  },
+  "targets: adaptive vs single_call": {
+    "win": 10,
+    "tie": 9,
+    "loss": 11,
+    "mean_diff": -0.28,
+    "wilcoxon_p": 0.4644,
+    "n_items": 30
+  },
+  "helpful: adaptive vs generic": {
+    "win": 29,
+    "tie": 1,
+    "loss": 0,
+    "mean_diff": 1.23,
+    "wilcoxon_p": "<0.0001",
+    "n_items": 30
+  },
+  "helpful: adaptive vs single_call": {
+    "win": 9,
+    "tie": 12,
+    "loss": 9,
+    "mean_diff": 0.1,
+    "wilcoxon_p": 0.3908,
+    "n_items": 30
+  }
+}

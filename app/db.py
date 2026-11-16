@@ -4,10 +4,13 @@ import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timezone
 
+from .topics import THESIS_MOTIONS
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users(user_id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, role TEXT DEFAULT 'student', created_at TEXT);
 CREATE TABLE IF NOT EXISTS debate_sessions(session_id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, topic TEXT NOT NULL,
-  student_side TEXT NOT NULL CHECK(student_side IN ('proponent','opponent')), mode TEXT DEFAULT 'adaptive', created_at TEXT);
+  student_side TEXT NOT NULL CHECK(student_side IN ('proponent','opponent')), mode TEXT DEFAULT 'adaptive', created_at TEXT, status TEXT DEFAULT 'active');
+CREATE TABLE IF NOT EXISTS topics(topic_id INTEGER PRIMARY KEY AUTOINCREMENT, motion TEXT NOT NULL UNIQUE, custom INTEGER DEFAULT 0, created_at TEXT);
 CREATE TABLE IF NOT EXISTS debate_turns(turn_id INTEGER PRIMARY KEY AUTOINCREMENT, session_id INTEGER NOT NULL, turn_number INTEGER NOT NULL,
   student_argument TEXT NOT NULL, timestamp TEXT, UNIQUE(session_id, turn_number));
 CREATE TABLE IF NOT EXISTS argument_analyses(analysis_id INTEGER PRIMARY KEY AUTOINCREMENT, turn_id INTEGER, claim TEXT, grounds TEXT, warrant TEXT,
@@ -25,7 +28,7 @@ CREATE TABLE IF NOT EXISTS feedback(feedback_id INTEGER PRIMARY KEY AUTOINCREMEN
 """
 
 # Columns added after the first release. Existing debate.db files are upgraded in place, no data is lost.
-MIGRATIONS = [("ai_responses", "latency_s", "REAL"), ("ai_responses", "orchestrator", "TEXT"),
+MIGRATIONS = [("debate_sessions", "status", "TEXT DEFAULT 'active'"), ("ai_responses", "latency_s", "REAL"), ("ai_responses", "orchestrator", "TEXT"),
               ("evaluation_cases", "split", "TEXT"), ("evaluation_cases", "run_date", "TEXT"),
               ("evaluation_cases", "backend", "TEXT")]
 
@@ -44,6 +47,8 @@ class Database:
             cols = {r["name"] for r in self._keep.execute(f"PRAGMA table_info({table})")}
             if col not in cols:
                 self._keep.execute(f"ALTER TABLE {table} ADD COLUMN {col} {typ}")
+        for m in THESIS_MOTIONS:      # thesis 3.10.1: the predefined motions live in the database
+            self._keep.execute("INSERT OR IGNORE INTO topics(motion,custom,created_at) VALUES(?,0,?)", (m, now()))
         self._keep.commit()
 
     @contextmanager
@@ -77,6 +82,20 @@ class Database:
             return c.execute("INSERT INTO debate_sessions(user_id,topic,student_side,mode,created_at) VALUES(?,?,?,?,?)",
                              (user_id, topic, side, mode, now())).lastrowid
 
+    def end_session(self, sid):
+        """Thesis 4.11.1 end_session(): a finished session accepts no more arguments (Table 6.1 'Session validation')."""
+        with self.tx() as c:
+            c.execute("UPDATE debate_sessions SET status='ended' WHERE session_id=?", (sid,))
+
+    def topics(self):
+        return [r["motion"] for r in self.all("SELECT motion FROM topics ORDER BY custom, topic_id")]
+
+    def add_topic(self, motion):
+        """A learner-written motion (custom=1). Returns the stored text."""
+        with self.tx() as c:
+            c.execute("INSERT OR IGNORE INTO topics(motion,custom,created_at) VALUES(?,1,?)", (motion, now()))
+        return motion
+
     def get_session(self, sid):
         return self.one("SELECT * FROM debate_sessions WHERE session_id=?", (sid,))
 
@@ -86,6 +105,14 @@ class Database:
     def previous_arguments(self, sid):
         return [r["student_argument"] for r in self.all(
             "SELECT student_argument FROM debate_turns WHERE session_id=? ORDER BY turn_number", (sid,))]
+
+    def conversation(self, sid, last=3):
+        """Last `last` exchanges (student argument + AI opponent reply), oldest first.
+        Real stored data only; gives the opponent the conversation history (thesis 3.11.5)."""
+        rows = self.all("""SELECT t.student_argument AS s, r.response_text AS a FROM debate_turns t
+            LEFT JOIN ai_responses r ON r.turn_id=t.turn_id WHERE t.session_id=?
+            ORDER BY t.turn_number DESC LIMIT ?""", (sid, last))
+        return [{"student": r["s"], "opponent": r["a"]} for r in reversed(rows)]
 
     def history(self, sid):
         return self.all("""SELECT t.turn_number, t.student_argument, d.weakness, d.diagnosis_reason, d.overall_score,

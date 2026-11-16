@@ -3,7 +3,9 @@
 stage_html(side, active, cheer, topic, caption, bubble_ai="", height=380) -> full HTML document
 coin_html(face)                                                          -> full HTML document
 """
+import base64
 import html
+import os
 import random
 
 FONTS = '<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@500;700&display=swap" rel="stylesheet">'
@@ -140,6 +142,50 @@ STAGE_TPL = """<!doctype html><html><head><meta charset="utf-8">__FONTS__
 MIC = """<svg width="26" height="52" viewBox="0 0 26 52"><path d="M13 52 C13 30 13 26 13 18" stroke="#2a2a30" stroke-width="2.4" fill="none"/>
 <rect x="8" y="2" width="10" height="18" rx="5" fill="url(#mg)" stroke="#111" stroke-width="1"/><defs><linearGradient id="mg" x1="0" x2="1"><stop offset="0" stop-color="#555"/><stop offset=".5" stop-color="#bbb"/><stop offset="1" stop-color="#444"/></linearGradient></defs></svg>"""
 
+ASSETS = os.path.join(os.path.dirname(__file__), "assets")
+
+
+def _hall_photo():
+    """Data URI of ui/assets/debate_hall.(jpg|png|webp) if you provide a real photo, else None."""
+    for name, mime in (("debate_hall.jpg", "image/jpeg"), ("debate_hall.jpeg", "image/jpeg"),
+                       ("debate_hall.png", "image/png"), ("debate_hall.webp", "image/webp")):
+        path = os.path.join(ASSETS, name)
+        if os.path.exists(path):
+            return f"data:{mime};base64," + base64.b64encode(open(path, "rb").read()).decode()
+    return None
+
+
+PHOTO_TPL = """<!doctype html><html><head><meta charset="utf-8">__FONTS__
+<style>
+*{box-sizing:border-box}html,body{margin:0;background:transparent;font-family:Inter,system-ui,sans-serif}
+.stage{position:relative;width:100%;height:__H__px;overflow:hidden;border-radius:18px;border:1px solid #e2e8f3;background:#0b2a5b url(__IMG__) center/cover no-repeat;box-shadow:0 12px 34px rgba(11,42,91,.25)}
+.shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(7,26,58,.6),rgba(7,26,58,0) 40%,rgba(7,26,58,.1) 60%,rgba(7,26,58,.78))}
+.live{position:absolute;top:16px;left:16px;display:flex;gap:8px;align-items:center;font-size:10px;letter-spacing:2px;font-weight:700;color:#fff;background:rgba(7,26,58,.7);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:4px 10px}
+.live i{width:8px;height:8px;border-radius:50%;background:#e5484d;animation:blink 1.4s infinite}
+.banner{position:absolute;top:14px;left:50%;transform:translateX(-50%);max-width:58%;padding:8px 22px 10px;text-align:center;background:rgba(11,42,91,.92);border:1px solid rgba(255,255,255,.25);border-radius:10px;color:#fff}
+.banner small{display:block;font-size:9px;letter-spacing:3px;color:#9fc2ff;font-weight:700}
+.banner b{display:block;font-family:'Playfair Display',Georgia,serif;font-weight:600;font-size:15px;line-height:1.25;margin-top:2px}
+.spk{position:absolute;bottom:16px;width:min(240px,40%);padding:10px 14px;border-radius:14px;background:rgba(255,255,255,.95);border:2px solid transparent;box-shadow:0 8px 22px rgba(0,0,0,.35);opacity:.86}
+.spk.you{left:3%}.spk.ai{right:3%}
+.spk.on{opacity:1;border-color:#1d5fd1;box-shadow:0 0 0 4px rgba(29,95,209,.35),0 8px 22px rgba(0,0,0,.35)}
+.spk b{display:block;font-size:12px;letter-spacing:2px;color:#0b2a5b}
+.spk small{display:inline-block;margin-top:4px;font-size:10px;letter-spacing:1.5px;font-weight:700;color:#fff;border-radius:999px;padding:2px 10px}
+.spk small.for{background:#1f9d63}.spk small.against{background:#1d5fd1}
+.spk em{float:right;font-style:normal;font-size:9px;letter-spacing:2px;font-weight:700;color:#1d5fd1;opacity:0}
+.spk.on em{opacity:1}
+.bubble{position:absolute;right:3%;bottom:96px;width:min(36%,320px);max-height:110px;overflow:hidden;padding:9px 12px;border-radius:12px;font-size:11.5px;line-height:1.35;color:#0b1220;background:#fff;box-shadow:0 10px 24px rgba(0,0,0,.4)}
+.bubble em{display:block;font-style:normal;font-size:8.5px;font-weight:700;letter-spacing:2px;color:#1d5fd1;margin-bottom:2px}
+.cap{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);max-width:30%;text-align:center;padding:6px 12px;font-size:11.5px;color:#fff;background:rgba(7,26,58,.75);border-radius:8px}
+@keyframes blink{50%{opacity:.25}}
+</style></head><body><div class="stage"><div class="shade"></div>
+<div class="live"><i></i>LIVE DEBATE</div>
+<div class="banner"><small>THE MOTION</small><b>__TOPIC__</b></div>
+__BUBBLE__
+<div class="spk you __YOUON__"><em>SPEAKING</em><b>YOU</b><small class="__YOUCLS__">__YOUTAG__</small></div>
+<div class="spk ai __AION__"><em>SPEAKING</em><b>OPPONENT</b><small class="__AICLS__">__AITAG__</small></div>
+<div class="cap">__CAPTION__</div>
+</div></body></html>"""
+
 
 def stage_html(side, active, cheer, topic, caption, bubble_ai="", height=380):
     cheer = max(1, min(int(cheer or 1), 5))
@@ -152,6 +198,11 @@ def stage_html(side, active, cheer, topic, caption, bubble_ai="", height=380):
         txt = bubble_ai.strip()
         txt = txt if len(txt) <= 170 else txt[:167].rsplit(" ", 1)[0] + "..."
         bubble = f'<div class="bubble"><em>OPPONENT</em>{html.escape(txt)}</div>'
+    img = _hall_photo()
+    if img:
+        return _fill(PHOTO_TPL, FONTS=FONTS, H=height, IMG=img, TOPIC=topic, BUBBLE=bubble, CAPTION=html.escape(caption or ""),
+                     YOUON=you_on, AION=ai_on, YOUTAG="FOR" if you_for else "AGAINST", AITAG="AGAINST" if you_for else "FOR",
+                     YOUCLS="for" if you_for else "against", AICLS="against" if you_for else "for")
     you = _person("y", ("#1c2b4a", "#0e1730"), "#f4f1ea", "#a63d40", ("#e8c29d", "#c18f66"), "#3a2a1c")
     ai = _person("a", ("#2c2c33", "#16161b"), "#e9e6df", "#2e6f9e", ("#c99872", "#9a6a47"), "#15110e")
     return _fill(STAGE_TPL, FONTS=FONTS, H=height, TOPIC=topic, BUBBLE=bubble, CAPTION=html.escape(caption or ""),

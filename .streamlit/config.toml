@@ -1,12 +1,14 @@
 [server]
 headless = true
+
 [theme]
 base = "light"
-primaryColor = "#0f8b7d"
-backgroundColor = "#eef5f3"
-secondaryBackgroundColor = "#ffffff"
-textColor = "#16302f"
+primaryColor = "#1d5fd1"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f5f8fd"
+textColor = "#0b1220"
 font = "sans serif"
+
 [client]
 toolbarMode = "minimal"
 showSidebarNavigation = false
